@@ -1,0 +1,226 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MISE_EXPERIMENTAL: 'true'
+
+jobs:
+  lint:
+    name: Lint and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lint
+        run: mise run lint
+
+      - name: Validate package structure
+        run: mise run validate
+
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, wasm-gc, js, native]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build ${{ matrix.target }}
+        run: mise run build -- ${{ matrix.target }} --release
+
+  test:
+    name: Test (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, wasm-gc, js, native]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test ${{ matrix.target }}
+        run: mise run test -- ${{ matrix.target }}
+
+  test-native-zig:
+    name: Test native (zig)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run the native tests with zig as the C compiler
+        run: mise run test:native-zig
+
+  test-scripts:
+    name: Test task scripts
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run the task script tests
+        run: mise run test:scripts
+
+  consumer:
+    name: Consumer (${{ matrix.os }})
+    needs: [lint]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cross: linux-arm64
+            host_exe: consumer.exe
+          - os: macos-latest
+            cross: linux-x64
+            host_exe: consumer.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cross-build the consumer fixture
+        run: mise run build:cross -- ${{ matrix.cross }} -- fixtures/consumer
+
+      - name: Check the cross-built output architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          found="$(find _build/cross/${{ matrix.cross }} -name '*.exe' | sort | head -n 1)"
+          if [ -z "$found" ]; then
+            echo "::error::no .exe under _build/cross/${{ matrix.cross }}"
+            exit 1
+          fi
+          echo "found: $found ($(wc -c <"$found") bytes)"
+          file "$found" || true
+          # Header validation mirrors apps/zig-cross format.mbt:
+          # ELF machine at offset 18 (u16le), Mach-O cputype at offset 4 (u32le), PE machine via e_lfanew.
+          python3 - "$found" "${{ matrix.cross }}" <<'PY'
+          import struct, sys
+          path, target = sys.argv[1], sys.argv[2]
+          data = open(path, 'rb').read()[:4096]
+          def fail(msg):
+              print(f"::error::{msg}")
+              sys.exit(1)
+          if target.startswith("linux-"):
+              if data[:4] != b"\x7fELF":
+                  fail(f"{target}: expected ELF, found {data[:4]!r}")
+              (machine,) = struct.unpack_from("<H", data, 18)
+              expected = 62 if target == "linux-x64" else 183
+              if machine != expected:
+                  fail(f"{target}: expected ELF machine {expected}, found {machine}")
+              print(f"OK {target}: ELF machine {machine}")
+          elif target.startswith("darwin-"):
+              if data[:4] != b"\xcf\xfa\xed\xfe":
+                  fail(f"{target}: expected Mach-O magic, found {data[:4]!r}")
+              (cputype,) = struct.unpack_from("<I", data, 4)
+              expected = 16777228 if target == "darwin-arm64" else 16777223
+              if cputype != expected:
+                  fail(f"{target}: expected Mach-O cputype {expected}, found {cputype}")
+              print(f"OK {target}: Mach-O cputype {cputype}")
+          elif target.startswith("windows-"):
+              if data[:2] != b"MZ":
+                  fail(f"{target}: expected MZ, found {data[:2]!r}")
+              (lfanew,) = struct.unpack_from("<I", data, 0x3C)
+              if data[lfanew:lfanew+4] != b"PE\x00\x00":
+                  fail(f"{target}: missing PE signature at {lfanew}")
+              (machine,) = struct.unpack_from("<H", data, lfanew+4)
+              if machine != 0x8664:
+                  fail(f"{target}: expected PE machine 34404, found {machine}")
+              print(f"OK {target}: PE machine {machine}")
+          PY
+
+      - name: Run exec host on the consumer tests
+        run: moon run apps/zig-cross --target wasm -- exec host -- moon test fixtures/consumer --target native
+
+      - name: Execute a host-compatible binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          moon build fixtures/consumer --target native --release
+          host_exe="$(find _build/native/release/build -name '*.exe' | sort | head -n 1)"
+          if [ -z "$host_exe" ]; then
+            echo "::error::no host .exe under _build/native/release/build"
+            exit 1
+          fi
+          chmod +x "$host_exe"
+          "$host_exe"
+
+  # The only check that branch protection needs. Add every new job to `needs`.
+  # `if: always()` is required: without it this job is skipped when a needed job fails, and
+  # GitHub counts a skipped required check as passed.
+  ci-ok:
+    name: ci-ok
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [lint, build, test, consumer, test-native-zig, test-scripts]
+    steps:
+      - name: Check that every job passed or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          failed="$(jq -r 'to_entries[]
+            | select(.value.result != "success" and .value.result != "skipped")
+            | "\(.key): \(.value.result)"' <<<"$NEEDS")"
+          if [ -n "$failed" ]; then
+            echo "::error::Some CI jobs did not pass"
+            echo "$failed"
+            exit 1
+          fi
+          echo "All CI jobs passed or were skipped."
