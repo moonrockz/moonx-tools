@@ -1,0 +1,5 @@
+members = [
+  ".",
+  "./apps/zig-cross",
+  "./fixtures/consumer",
+]

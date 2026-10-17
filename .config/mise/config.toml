@@ -1,0 +1,171 @@
+# Mise configuration for the moonrockz/moonx-tools monorepo.
+#
+# Tools are pinned here. Tasks are MoonBit scripts in scripts/*.mbtx, run with moonx, so one script
+# works on every platform.
+#
+# Local overrides go in .config/mise/config.local.toml (gitignored); see config.local.toml.example.
+
+[tools]
+# Node.js runs the js target in `moon test --target js` and `moon run --target js`.
+node = "24.14.1"
+
+# YAML linting, pinned so lint results do not change between machines
+yamllint = "1.38.0"
+
+# Git hooks manager; the hooks are in lefthook.yml
+lefthook = "2.1.1"
+
+# C cross compiler for apps/zig-cross (native binaries for Linux, macOS and Windows from one machine)
+zig = "0.17.0"
+
+# Changelog generator for the release notes
+"aqua:orhun/git-cliff" = "2.14.2"
+
+# MoonBit toolchain, pinned. mise cannot resolve "latest" for an http: tool, and a pinned version
+# keeps CI and every machine on the same compiler. To move to a newer release, change the version
+# here and in each URL (with "+" written as "%2B"), taken from
+# https://cli.moonbitlang.com/binaries/<version>/.
+#
+# The binary archive omits the core library. CI (and a fresh machine) completes it with
+# `curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME=$(mise where http:moonbit) bash -s -- <version>`.
+
+[tools."http:moonbit"]
+version = "0.10.15+943464bfa"
+bin_path = "bin"
+
+[tools."http:moonbit".platforms]
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-linux-x86_64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-windows-x86_64.zip", format = "zip" }
+
+[env]
+_.path = ["./node_modules/.bin"]
+
+# Every task is a MoonBit script: `moonx scripts/<name>.mbtx`. Pass arguments after `--`.
+
+[tasks.build]
+description = "Build all workspace members (args: targets, --release; default: wasm wasm-gc js native)"
+run = "moonx scripts/build.mbtx"
+
+[tasks."build:wasm"]
+description = "Build all workspace members for the wasm target"
+run = "moonx scripts/build.mbtx wasm"
+
+[tasks."build:wasm-gc"]
+description = "Build all workspace members for the wasm-gc target"
+run = "moonx scripts/build.mbtx wasm-gc"
+
+[tasks."build:js"]
+description = "Build all workspace members for the js target"
+run = "moonx scripts/build.mbtx js"
+
+[tasks."build:native"]
+description = "Build all workspace members as native release executables"
+run = "moonx scripts/build.mbtx native --release"
+
+[tasks."build:cross"]
+description = "Cross-compile native binaries with zig (args: build targets, then -- and package paths)"
+run = "moon run apps/zig-cross --target wasm -- build"
+
+[tasks.test]
+description = "Run tests for all workspace members (args: targets; default: wasm wasm-gc js native)"
+run = "moonx scripts/test.mbtx"
+
+[tasks.format]
+description = "Format MoonBit code"
+run = "moonx scripts/format.mbtx"
+
+[tasks.lint]
+description = "Run all lint tasks (YAML, MoonBit format and check)"
+run = "moonx scripts/lint.mbtx"
+
+[tasks."lint:moonbit"]
+description = "Check MoonBit formatting and run moon check"
+run = "moonx scripts/lint-moonbit.mbtx"
+
+[tasks."lint:yaml"]
+description = "Lint YAML files with yamllint"
+run = "moonx scripts/lint-yaml.mbtx"
+
+[tasks.validate]
+description = "Run all validation checks"
+depends = ["validate:packages", "validate:versions"]
+
+[tasks."validate:packages"]
+description = "Verify the workspace package structure against moon.work"
+run = "moonx scripts/validate-packages.mbtx"
+
+[tasks."validate:versions"]
+description = "Verify that every module and version string has the version of the root moon.mod"
+run = "moonx scripts/versions.mbtx check"
+
+[tasks."test:native-zig"]
+description = "Run the native tests with zig as the C compiler (the host wrapper of zig-cross)"
+run = "moon run apps/zig-cross --target wasm -- exec host -- moonx scripts/test.mbtx native"
+
+[tasks."test:scripts"]
+description = "Run the tests of the task scripts (scripts/*.mbtx that have a scripts/features/*.feature)"
+run = "moonx scripts/test-scripts.mbtx"
+
+[tasks."test:consumer"]
+description = "Cross-build the consumer fixture and run exec host"
+run = "moonx scripts/test-consumer.mbtx"
+
+[tasks.check]
+description = "Run lint, validate, test and build"
+run = "moonx scripts/check.mbtx"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "moonx scripts/clean.mbtx"
+
+[tasks."hooks:install"]
+description = "Install the git hooks with lefthook (see lefthook.yml)"
+run = "moonx scripts/hooks-install.mbtx"
+
+[tasks.list-tasks]
+description = "List all mise tasks"
+run = "mise tasks"
+
+[settings]
+experimental = true
+
+[tasks."release:version"]
+description = "Print the next release version, computed by git-cliff from the commits"
+run = "moonx scripts/release.mbtx version"
+
+[tasks."release:prepare"]
+description = "Open the release pull request (args: optional X.Y.Z, --local to stop before the push)"
+run = "moonx scripts/release.mbtx prepare"
+
+[tasks."release:refresh"]
+description = "Update the body of the release pull request from CHANGELOG.md and mark it ready"
+run = "moonx scripts/release.mbtx refresh"
+
+[tasks."release:notes"]
+description = "Print the GitHub release notes of a version (args: X.Y.Z)"
+run = "moonx scripts/release.mbtx notes"
+
+[tasks."release:plan"]
+description = "Decide what the Release workflow does (reads GITHUB_EVENT_NAME, GITHUB_REF_TYPE, GITHUB_REF_NAME, DRY_RUN; writes GITHUB_OUTPUT)"
+run = "moonx scripts/release.mbtx plan"
+
+[tasks."release:github"]
+description = "Create the GitHub release from dist/, or upload the assets it lacks (args: X.Y.Z; needs GITHUB_SHA and RUNNER_TEMP)"
+run = "moonx scripts/release.mbtx github"
+
+[tasks."release:status"]
+description = "Check that main, the tags, the GitHub release and mooncakes.io agree"
+run = "moonx scripts/release.mbtx status"
+
+[tasks."release:credentials"]
+description = "Write the mooncakes.io credentials from MOONCAKES_USER_TOKEN to $MOON_HOME/credentials.json (CI only)"
+run = "moonx scripts/credentials.mbtx"
+
+[tasks."release:publish"]
+description = "Publish the public modules to mooncakes.io with retries; a version already published counts as done (CI only)"
+run = "moonx scripts/publish.mbtx"
+
+[tasks."release:verify-cli"]
+description = "Run the published moonx CLI with bounded retries for registry asset availability (args: X.Y.Z)"
+run = "moonx scripts/publish.mbtx verify-cli"
