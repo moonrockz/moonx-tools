@@ -9,6 +9,9 @@
 # Node.js runs the js target in `moon test --target js` and `moon run --target js`.
 node = "24.14.1"
 
+# Spec-driven change planning and agent workflow skills
+"npm:@fission-ai/openspec" = "1.14.3"
+
 # YAML linting, pinned so lint results do not change between machines
 yamllint = "1.38.0"
 
@@ -118,6 +121,10 @@ run = "moonx scripts/check.mbtx"
 [tasks.clean]
 description = "Remove build artifacts"
 run = "moonx scripts/clean.mbtx"
+
+[tasks."openspec:sync"]
+description = "Regenerate all agent skills with isolated OpenSpec core/skills settings"
+run = "moonx scripts/openspec.mbtx"
 
 [tasks."hooks:install"]
 description = "Install the git hooks with lefthook (see lefthook.yml)"

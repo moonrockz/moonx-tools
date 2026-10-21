@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  Follow AGENTS.md for repository conventions and README.md for development and release commands.
+  This is a MoonBit monorepo of command-line tools distributed through moonx.
+  Keep tools pinned in .config/mise/config.toml and task automation in scripts/*.mbtx.
+  Preserve existing CLI behavior unless the change explicitly proposes a compatibility break.
+  zig-cross runs on Linux and macOS; Windows is a cross-compilation target, not a supported host.
+  All modules share the version in the root moon.mod.
+
+rules:
+  proposal:
+    - State which tools, CLI behavior, or release behavior change and what is
+      out of scope.
+  specs:
+    - Describe observable behavior with concrete scenarios, including relevant
+      failure cases.
+  design:
+    - Address affected MoonBit backends, host platforms, and cross-compilation
+      targets.
+    - Keep task automation in MoonBit scripts with pinned imports, as required
+      by AGENTS.md.
+  tasks:
+    - Include focused verification for the affected behavior and mise run lint
+      plus mise run validate.
+    - Include mise run format when changing MoonBit code.
+githubCopilot:
+  cloudAgent: false

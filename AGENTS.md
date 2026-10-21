@@ -9,6 +9,15 @@ MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
 - MoonBit `0.10.15+943464bfa`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
 - `moon.work` lists workspace members (`apps/*`, `fixtures/*`). `moon build`, `moon test`, `moon check`, `moon fmt` at the root act on all of them.
 
+## OpenSpec
+
+- OpenSpec is pinned through mise. Project context and artifact rules are in `openspec/config.yaml`.
+- Keep current specifications in `openspec/specs/`, active changes in `openspec/changes/`, and completed changes in `openspec/changes/archive/`.
+- Workflow skills are generated in `.agents/skills/` for Codex and Muse, `.claude/skills/`, `.github/skills/`, `.cursor/skills/`, and `.grok/skills/`.
+- Plan with `openspec-propose`, implement with `openspec-apply-change`, and finish with `openspec-archive-change`. Invoke skills with `$` in Codex and `/` in Claude, Copilot, Muse, Cursor, and Grok.
+- After changing specs or proposals, run `openspec validate --all --strict`.
+- Regenerate skills with `mise run openspec:sync` after upgrading the pinned CLI. This fixes the workflow set to `core` and delivery to `skills` using an isolated config under `_build/`, preserving global preferences.
+
 ## Task scripts
 
 Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell. See Smithy's `AGENTS.md` pattern.
