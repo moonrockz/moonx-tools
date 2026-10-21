@@ -41,6 +41,48 @@ Windows note: a `windows-x64` binary that zig cross-builds is wrong for MoonBit 
 that uses `OsString` (see `apps/zig-cross/README.md`). Build Windows binaries on Windows.
 `zig-cross` itself runs on Linux/macOS only.
 
+## Planning changes with OpenSpec
+
+`mise install` installs the pinned OpenSpec CLI. Repository context and artifact
+rules live in [`openspec/config.yaml`](openspec/config.yaml). Current specs live
+in `openspec/specs/`; proposals, designs, spec changes, and tasks live in
+`openspec/changes/<change-name>/` until archived.
+
+The same six workflow skills are installed for every agent we use:
+
+| Agent | Skill directory | Start a proposal |
+| --- | --- | --- |
+| Codex | `.agents/skills/` | `$openspec-propose "describe the change"` |
+| Claude Code | `.claude/skills/` | `/openspec-propose "describe the change"` |
+| GitHub Copilot | `.github/skills/` | `/openspec-propose "describe the change"` |
+| Muse Code | `.agents/skills/` | `/openspec-propose "describe the change"` |
+| Cursor | `.cursor/skills/` | `/openspec-propose "describe the change"` |
+| Grok Build | `.grok/skills/` | `/openspec-propose "describe the change"` |
+
+Use `openspec-explore` to investigate an idea and `openspec-propose` to generate
+a proposal. Review the artifacts, use `openspec-update-change` to revise them,
+then `openspec-apply-change <change-name>` to implement. Use
+`openspec-sync-specs` to merge spec changes and `openspec-archive-change` to
+finish. Add the invocation prefix from the table to each skill name.
+
+Restart the agent or IDE after setup to load its skills. Muse reads the shared
+skills once the workspace is trusted; see its
+[skill documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/).
+To regenerate integrations, run:
+
+```sh
+openspec init --tools codex,claude,github-copilot,cursor,grok --profile core --no-copilot-cloud
+```
+
+```sh
+openspec list                       # active changes
+openspec list --specs               # current specifications
+openspec validate --all --strict    # validate specs and changes
+openspec update                    # refresh skills after upgrading the pinned CLI
+```
+
+See the [OpenSpec documentation](https://openspec.dev/docs/setup) for the workflow.
+
 ## CI
 
 `.github/workflows/ci.yml`:
