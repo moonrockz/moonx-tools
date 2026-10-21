@@ -1,0 +1,36 @@
+///|
+/// Regenerate OpenSpec skills for every supported project agent without reading or changing
+/// the contributor's global OpenSpec profile or delivery preferences.
+///
+/// Usage: `mise run openspec:sync`, or `moonx scripts/openspec.mbtx`.
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn main {
+  let config_home = "_build/openspec/xdg"
+  @fs.mkdir("\{config_home}/openspec", recursive=true, allow_exist=true)
+  let config : Json = { "profile": "core", "delivery": "skills" }
+  @fs.write_file(
+    "\{config_home}/openspec/config.json",
+    config.stringify() + "\n",
+  )
+  let code = @process.run(
+    "openspec",
+    [
+      "init", "--tools", "codex,claude,github-copilot,cursor,grok", "--profile",
+      "core", "--no-animation", "--no-copilot-cloud",
+    ],
+    extra_env={ "XDG_CONFIG_HOME": @fs.realpath(config_home) },
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @sys.exit(if code > 0 { code } else { 1 })
+  }
+}

@@ -122,6 +122,10 @@ run = "moonx scripts/check.mbtx"
 description = "Remove build artifacts"
 run = "moonx scripts/clean.mbtx"
 
+[tasks."openspec:sync"]
+description = "Regenerate all agent skills with isolated OpenSpec core/skills settings"
+run = "moonx scripts/openspec.mbtx"
+
 [tasks."hooks:install"]
 description = "Install the git hooks with lefthook (see lefthook.yml)"
 run = "moonx scripts/hooks-install.mbtx"

@@ -68,17 +68,21 @@ finish. Add the invocation prefix from the table to each skill name.
 Restart the agent or IDE after setup to load its skills. Muse reads the shared
 skills once the workspace is trusted; see its
 [skill documentation](https://meta-models.github.io/muse-code-sdk/next/guides/extend/).
-To regenerate integrations, run:
+To regenerate integrations after upgrading the pinned CLI, run:
 
 ```sh
-openspec init --tools codex,claude,github-copilot,cursor,grok --profile core --no-copilot-cloud
+mise run openspec:sync
 ```
+
+This task fixes the workflow set to `core` and delivery to `skills` in an isolated
+config under `_build/`. It preserves your global OpenSpec preferences and produces
+the same skills for every contributor. Use this task to refresh this repo's
+integrations.
 
 ```sh
 openspec list                       # active changes
 openspec list --specs               # current specifications
 openspec validate --all --strict    # validate specs and changes
-openspec update                    # refresh skills after upgrading the pinned CLI
 ```
 
 See the [OpenSpec documentation](https://openspec.dev/docs/setup) for the workflow.
