@@ -35,6 +35,10 @@ on:
       - scripts/versions.mbtx
       - scripts/credentials.mbtx
       - apps/zig-cross/**
+      - apps/pubman/**
+      - fixtures/pubman-consumer/**
+      - scripts/test-pubman.mbtx
+      - .github/workflows/ci.yml
       - .config/mise/config.toml
       - moon.mod
       - moon.work
@@ -107,6 +111,12 @@ jobs:
 
       - name: Run the consumer cross-build and exec host
         run: mise run test:consumer
+
+      - name: Install pinned Chromium
+        run: mise exec -- playwright install --with-deps chromium
+
+      - name: Verify pubman installed package consumers for this candidate
+        run: mise run test:pubman
 
       - name: Check that every version is ${{ needs.plan.outputs.version }}
         run: moonx scripts/versions.mbtx check ${{ needs.plan.outputs.version }}

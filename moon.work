@@ -1,5 +1,7 @@
 members = [
   ".",
   "./apps/zig-cross",
+  "./apps/pubman",
   "./fixtures/consumer",
+  "./fixtures/pubman-consumer",
 ]

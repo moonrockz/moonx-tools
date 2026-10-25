@@ -8,12 +8,15 @@
 [tools]
 # Node.js runs the js target in `moon test --target js` and `moon run --target js`.
 node = "24.14.1"
+"npm:typescript" = "5.9.3"
+"npm:playwright" = "1.58.2"
 
 # Spec-driven change planning and agent workflow skills
 "npm:@fission-ai/openspec" = "1.14.3"
 
 # YAML linting, pinned so lint results do not change between machines
 yamllint = "1.38.0"
+jq = "1.8.1"
 
 # Git hooks manager; the hooks are in lefthook.yml
 lefthook = "2.1.1"
@@ -176,3 +179,7 @@ run = "moonx scripts/publish.mbtx"
 [tasks."release:verify-cli"]
 description = "Run the published moonx CLI with bounded retries for registry asset availability (args: X.Y.Z)"
 run = "moonx scripts/publish.mbtx verify-cli"
+
+[tasks."test:pubman"]
+description = "Pack one pubman fixture and verify installed Node/browser/types and read-only previews"
+run = "moonx scripts/test-pubman.mbtx"

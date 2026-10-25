@@ -116,10 +116,10 @@ async fn main {
     "moon",
     ["build", consumer, "--target", "native", "--release"],
   )
-  match find_exe("_build/native/release/build") {
+  match find_exe("_build/native/release/build/moonrockz/consumer") {
     Some(exe) => run_step("Executing the host-compatible binary \{exe}", exe, [])
     None =>
-      fail_with("no host .exe under _build/native/release/build after the native build")
+      fail_with("no host .exe under _build/native/release/build/moonrockz/consumer after the native build")
   }
   println("✅ Consumer fixture passed")
 }

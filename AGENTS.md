@@ -1,7 +1,7 @@
 # Agent Instructions
 
 MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
-`apps/zig-cross` (`moonrockz/zig-cross`). See [README.md](README.md) for usage.
+`apps/zig-cross` (`moonrockz/zig-cross`) and `apps/pubman` (`moonrockz/pubman`). See [README.md](README.md) for usage.
 
 ## Toolchain
 
@@ -35,11 +35,12 @@ Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell
 
 - `mise run test:native-zig` runs native tests with zig (`exec host`).
 - `mise run test:consumer` cross-builds `fixtures/consumer` and runs `exec host`.
+- `mise run test:pubman` packs one library fixture and verifies installed Node/Chromium/TypeScript consumers, previews, and fake registries.
 - `mise run test:scripts` runs script tests (`scripts/features/*.feature` via moonspec).
 
 ## Release
 
-`moonrockz/zig-cross` publishes to mooncakes.io + GitHub Releases, recorded in `CHANGELOG.md` (git-cliff, `cliff.toml`).
+`moonrockz/zig-cross` and `moonrockz/pubman` publish to mooncakes.io + GitHub Releases, recorded in `CHANGELOG.md` (git-cliff, `cliff.toml`).
 
 - All modules share one version; root `moon.mod` is source of truth. `mise run validate:versions` fails on mismatch; `moonx scripts/versions.mbtx set X.Y.Z` rewrites.
 - `mise run release:prepare [X.Y.Z]` computes next version, sets it, prepends CHANGELOG, opens draft PR on `release/vX.Y.Z`. Replace highlights placeholder, then `mise run release:refresh` and merge.

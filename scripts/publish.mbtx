@@ -23,6 +23,7 @@ import {
 /// module. `scripts/release.mbtx` keeps the same list, and a scenario checks that the two are equal.
 let publish_list : Array[(String, String)] = [
   ("apps/zig-cross", "moonrockz/zig-cross"),
+  ("apps/pubman", "moonrockz/pubman"),
 ]
 
 ///|
@@ -151,14 +152,21 @@ async fn publish_all() -> Unit {
 /// Registry metadata can become visible before moonx can fetch the Wasm asset.
 /// Retry that exact availability error with the same bounded network backoff.
 async fn verify_cli(version : String) -> Unit {
-  let (code, out) = with_retry("verify published CLI", () => {
-    output_in(".", "moonx", ["moonrockz/zig-cross@\{version}", "--version"])
-  })
-  if code != 0 {
-    fail_with("the published CLI could not run: \{out.trim()}")
-    return
+  for (_, name) in publish_list {
+    for option in ["--version", "--help"] {
+      let (code, out) = with_retry("verify published CLI", () => {
+        output_in(".", "moonx", ["\{name}@\{version}", option])
+      })
+      if code != 0 {
+        fail_with("the published CLI could not run: \{out.trim()}")
+        return
+      }
+      if option == "--version" && !out.contains(version) {
+        fail_with("published CLI version differs from " + version)
+      }
+      println(out.trim())
+    }
   }
-  println(out.trim())
 }
 
 ///|
@@ -279,4 +287,12 @@ async test "publish feature" {
     ]),
   )
   |> ignore
+}
+
+///|
+test "only public CLIs are released" {
+  assert_eq(publish_list, [
+    ("apps/zig-cross", "moonrockz/zig-cross"),
+    ("apps/pubman", "moonrockz/pubman"),
+  ])
 }

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "module": ".",
+  "npm": { "name": "@moonrockz/pubman-consumer", "access": "public", "tag": "fixture" },
+  "entries": {
+    "js": {
+      "package": "js", "wrapper": "bindings/js.mjs",
+      "declaration": { "backend": "js", "path": "js/js.d.ts" }
+    },
+    "wasm": {
+      "package": "wasm", "wrapper": "bindings/wasm.mjs", "declaration": "bindings/wasm.d.ts",
+      "loader": { "builtins": ["js-string"], "importedStringConstants": "_" }
+    }
+  },
+  "assets": [
+    { "source": "README.md", "destination": "README.md" },
+    { "source": "LICENSE", "destination": "LICENSE" }
+  ],
+  "checks": { "node": ["checks/node.mjs", "checks/shared.mjs"], "browser": ["checks/browser.mjs", "checks/shared.mjs"], "types": ["checks/consumer.mts"] },
+  "output": "_build/pubman/release"
+}

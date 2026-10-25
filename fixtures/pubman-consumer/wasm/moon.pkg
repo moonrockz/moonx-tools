@@ -1,0 +1,16 @@
+import {
+  "moonrockz/pubman-consumer" @lib,
+}
+
+supported_targets = "wasm-gc"
+
+options(
+  link: {
+    "wasm-gc": {
+      "exports": [ "greet", "add", "quotient" ],
+      "use-js-builtin-string": true,
+    },
+  },
+)
+
+pkgtype(kind: "foreign_library")

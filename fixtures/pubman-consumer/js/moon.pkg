@@ -1,0 +1,11 @@
+import {
+  "moonrockz/pubman-consumer" @lib,
+}
+
+supported_targets = "js"
+
+options(
+  link: { "js": { "exports": [ "greet", "add", "quotient" ], "format": "esm" } },
+)
+
+pkgtype(kind: "foreign_library")
