@@ -1,6 +1,6 @@
 ///|
 /// The version of this tool. `scripts/versions.mbtx` keeps it equal to `version` in `moon.mod`.
-pub let version : String = "0.1.2"
+pub let version : String = "0.2.0"
 
 ///|
 pub fn version_text() -> String {
