@@ -1,6 +1,6 @@
 name = "moonrockz/consumer"
 
-version = "0.1.2"
+version = "0.2.0"
 
 description = "Consumer fixture for zig-cross: a real cross-build target"
 

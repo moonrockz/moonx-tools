@@ -13,7 +13,7 @@ repo = "moonx-tools"
 header = """
 # Changelog
 
-All notable changes to `moonrockz/zig-cross` are listed here, newest first.
+All notable changes to `moonrockz/zig-cross` and `moonrockz/pubman` are listed here, newest first.
 Versions follow [Semantic Versioning](https://semver.org); while the version
 is 0.x, a minor release can contain breaking changes.
 
