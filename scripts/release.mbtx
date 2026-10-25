@@ -216,7 +216,7 @@ fn changelog_section(changelog : String, version : Version) -> String? {
 ///|
 /// The GitHub release notes: the install lines, then the changelog section.
 fn release_notes(version : Version, section : String) -> String {
-  let install = "**Install:**\n\n- `moonx moonrockz/zig-cross@\{version} --help`"
+  let install = "**Install:**\n\n- `moonx moonrockz/zig-cross@\{version} --help`\n- `moonx moonrockz/pubman@\{version} --help`"
   tidy_changelog(install + "\n\n" + section)
 }
 
@@ -225,6 +225,7 @@ fn release_notes(version : Version, section : String) -> String {
 /// `scripts/publish.mbtx` keeps the same list.
 let publish_list : Array[(String, String)] = [
   ("apps/zig-cross", "moonrockz/zig-cross"),
+  ("apps/pubman", "moonrockz/pubman"),
 ]
 
 ///|

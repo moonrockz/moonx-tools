@@ -191,6 +191,7 @@ Feature: Release tooling
       **Install:**
 
       - `moonx moonrockz/zig-cross@0.3.0 --help`
+      - `moonx moonrockz/pubman@0.3.0 --help`
 
       Highlights of 0.3.0.
 

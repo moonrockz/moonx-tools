@@ -1,0 +1,435 @@
+///|
+/// Build one fixture bundle per host, verify its installed consumers, then
+/// reuse those exact bytes for every backend's command/dry-run contracts.
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+suberror TaskFailure {
+  TaskFailure(String)
+}
+
+///|
+async fn call(
+  cmd : String,
+  args : Array[String],
+  cwd : String,
+) -> (Int32, String, String) {
+  let (code, out, err) = @process.collect_output(cmd, args[:], cwd=cwd[:])
+  (code, out.text(), err.text())
+}
+
+///|
+async fn required(cmd : String, args : Array[String], cwd : String) -> String {
+  let (code, out, err) = call(cmd, args, cwd)
+  if code != 0 {
+    eprintln(out + err)
+    raise TaskFailure("required command failed")
+  }
+  out
+}
+
+///|
+fn get(j : Json, key : String) -> Json {
+  match j {
+    Object(m) => m.get(key).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn snapshot(root : String) -> Json {
+  let m : Map[String, Json] = Map([])
+  for name in @fs.readdir(root, include_hidden=true, sort=true) {
+    let path = root + "/" + name
+    if @fs.kind(path, follow_symlink=false) is Directory {
+      m[name] = snapshot(path)
+    } else {
+      m[name] = Json::string(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(path).binary()),
+        ),
+      )
+    }
+  }
+  Json::object(m)
+}
+
+///|
+async fn cli(
+  cmd : String,
+  prefix : Array[String],
+  args : Array[String],
+  cwd : String,
+  status : Int32,
+) -> Json {
+  let argv = prefix.copy()
+  argv.append(args)
+  let (code, out, err) = call(cmd, argv, cwd)
+  if code != status {
+    eprintln("unexpected exit \{code}, expected \{status}: " + out + err)
+    raise TaskFailure("required command failed")
+  }
+  let result = @json.parse(out)
+  assert_eq(get(result, "schemaVersion"), 1)
+  assert_eq(get(result, "ok"), Json::boolean(status == 0))
+  result
+}
+
+///|
+async fn main {
+  let root = @fs.realpath(@env.current_dir().unwrap())
+  gate_contract(root)
+  let config = root + "/fixtures/pubman-consumer/pubman.json"
+  let fixture = root + "/fixtures/pubman-consumer"
+  let bundle = fixture + "/_build/pubman/release"
+  ignore(required("moon", ["test", "apps/pubman", "--target", "native"], root))
+  for backend in ["native", "wasm"] {
+    ignore(
+      required(
+        "moon",
+        ["build", "apps/pubman", "--target", backend, "--release"],
+        root,
+      ),
+    )
+  }
+  let exe = root + "/_build/native/release/build/moonrockz/pubman/pubman.exe"
+  let wasm = root + "/_build/wasm/release/build/moonrockz/pubman/pubman.wasm"
+  ignore(cli(exe, [], ["pack", "--config", config, "--json"], root, 0))
+  bundle_contract(bundle)
+  // Verify still works after the source is moved out of its original location.
+  let hidden = fixture + ".verification-hidden"
+  @fs.rename(fixture, hidden, replace=false)
+  let mut moved = true
+  defer (if moved { @fs.rename(hidden, fixture, replace=false) })
+  ignore(
+    cli(
+      exe,
+      [],
+      ["verify", "--bundle", hidden + "/_build/pubman/release", "--json"],
+      root,
+      0,
+    ),
+  )
+  @fs.rename(hidden, fixture, replace=false)
+  moved = false
+  let receipt = @fs.read_file(bundle + "/verification.json").binary()
+  for (cmd, prefix) in [(exe, []), ("moonrun", [wasm, "--"])] {
+    for c in ["plan", "pack", "verify", "publish"] {
+      let input = if c == "plan" || c == "pack" {
+        ["--config", config]
+      } else {
+        ["--bundle", bundle]
+      }
+      let args = [c]
+      args.append(input)
+      if c != "plan" {
+        args.push("--dry-run")
+      }
+      let before = snapshot(fixture)
+      for json_before in [true, false] {
+        let argv = args.copy()
+        if json_before {
+          argv.insert(0, "--json")
+        } else {
+          argv.push("--json")
+        }
+        let result = cli(cmd, prefix, argv, "/", 0)
+        if c != "plan" {
+          assert_eq(get(get(result, "data"), "dryRun"), true)
+        }
+      }
+      assert_eq(snapshot(fixture), before)
+      let invalid = prefix.copy()
+      invalid.append([c, "--bad", "--json"])
+      let (code, out, _) = call(cmd, invalid, root)
+      assert_eq(code, 2)
+      assert_eq(out, "")
+      let missing = prefix.copy()
+      missing.push(c)
+      let (code, out, _) = call(cmd, missing, root)
+      assert_eq(code, 2)
+      assert_eq(out, "")
+      let bad_local = [
+        c,
+        if c == "plan" || c == "pack" {
+          "--config"
+        } else {
+          "--bundle"
+        },
+        "/missing/pubman-input",
+        "--json",
+      ]
+      let argv = prefix.copy()
+      argv.append(bad_local)
+      let (code, out, _) = call(cmd, argv, root)
+      assert_true(code != 0)
+      assert_eq(get(@json.parse(out), "ok"), false)
+    }
+    for option in ["--help", "--version"] {
+      let argv = prefix.copy()
+      argv.push(option)
+      let (code, out, _) = call(cmd, argv, root)
+      assert_eq(code, 0)
+      assert_true(out.contains("pubman"))
+    }
+  }
+  assert_eq(@fs.read_file(bundle + "/verification.json").binary(), receipt)
+  // Preview without a receipt cannot qualify a release.
+  @fs.rename(bundle + "/verification.json", bundle + "/verification.saved")
+  ignore(
+    cli(exe, [], ["verify", "--bundle", bundle, "--dry-run", "--json"], root, 0),
+  )
+  ignore(
+    cli(
+      exe,
+      [],
+      ["publish", "--bundle", bundle, "--dry-run", "--json"],
+      root,
+      0,
+    ),
+  )
+  let blocked = cli(exe, [], ["publish", "--bundle", bundle, "--json"], root, 1)
+  assert_eq(get(get(blocked, "error"), "code"), "VERIFICATION_REQUIRED")
+  assert_false(@fs.exists(bundle + "/verification.json"))
+  @fs.rename(bundle + "/verification.saved", bundle + "/verification.json")
+  negative_consumers(exe, bundle, root)
+  // Tarball mutation invalidates local validation before any registry operation.
+  let tgz = @fs.read_file(bundle + "/payload/package.tgz").binary()
+  @fs.write_file(bundle + "/payload/package.tgz", "tampered")
+  let tampered = cli(
+    exe,
+    [],
+    ["publish", "--bundle", bundle, "--json"],
+    root,
+    1,
+  )
+  assert_eq(get(get(tampered, "error"), "code"), "BUNDLE_TAMPERED")
+  @fs.write_file(bundle + "/payload/package.tgz", tgz)
+  assert_eq(@fs.read_file(bundle + "/verification.json").binary(), receipt)
+  println(
+    "pubman: installed Node/Chromium/NodeNext/Bundler checks and native/wasm previews passed",
+  )
+}
+
+///|
+async fn clone_tree(src : String, dest : String) -> Unit {
+  @fs.mkdir(dest, recursive=true)
+  for name in @fs.readdir(src, include_hidden=true) {
+    if @fs.kind(src + "/" + name) is Directory {
+      clone_tree(src + "/" + name, dest + "/" + name)
+    } else {
+      @fs.write_file(dest + "/" + name, @fs.read_file(src + "/" + name))
+    }
+  }
+}
+
+///|
+async fn flat_inventory(root : String, prefix~ : String = "") -> Json {
+  let m : Map[String, Json] = Map([])
+  for name in @fs.readdir(root, include_hidden=true, sort=true) {
+    let path = root + "/" + name
+    if @fs.kind(path) is Directory {
+      guard flat_inventory(path, prefix=prefix + name + "/") is Object(children) else {
+        abort("inventory")
+      }
+      for k, v in children {
+        m[k] = v
+      }
+    } else {
+      m[prefix + name] = Json::string(
+        @crypto.bytes_to_hex_string(
+          @crypto.sha256(@fs.read_file(path).binary()),
+        ),
+      )
+    }
+  }
+  Json::object(m)
+}
+
+///|
+async fn negative_consumers(
+  exe : String,
+  bundle : String,
+  cwd : String,
+) -> Unit {
+  for defect in ["any", "unresolved", "missing-wasm-types", "runtime"] {
+    let work = @fs.realpath(@fs.tmpdir(prefix="pubman-negative-"))
+    defer @fs.rmdir(work, recursive=true)
+    let candidate = work + "/bundle"
+    clone_tree(bundle, candidate)
+    ignore(
+      required(
+        "tar",
+        ["-xzf", candidate + "/payload/package.tgz", "-C", work],
+        cwd,
+      ),
+    )
+    let pkg = work + "/package"
+    match defect {
+      "any" => {
+        let path = pkg + "/js/index.d.ts"
+        let text = @fs.read_file(path)
+          .text()
+          .replace(old="MoonBit.String", new="any")
+          .replace(old="MoonBit.Int", new="any")
+        @fs.write_file(path, text)
+        let path = pkg + "/wasm/index.d.ts"
+        @fs.write_file(
+          path,
+          @fs.read_file(path)
+          .text()
+          .replace(old=": string", new=": any")
+          .replace(old=": number", new=": any"),
+        )
+      }
+      "unresolved" => @fs.remove(pkg + "/js/moonbit.d.ts")
+      "missing-wasm-types" => @fs.remove(pkg + "/wasm/index.d.ts")
+      _ =>
+        @fs.write_file(
+          pkg + "/js/index.mjs",
+          "export const greet=()=>42; export const add=(a,b)=>a+b; export const quotient=(a,b)=>b===0?-1:Math.trunc(a/b);\n",
+        )
+    }
+    let packed = @json.parse(
+      required(
+        "npm",
+        ["pack", "--ignore-scripts", "--json", "--pack-destination", work],
+        pkg,
+      ),
+    )
+    guard packed is Array(items) && get(items[0], "filename") is String(name) else {
+      abort("npm pack result")
+    }
+    @fs.write_file(
+      candidate + "/payload/package.tgz",
+      @fs.read_file(work + "/" + name),
+    )
+    @fs.write_file(
+      candidate + "/payload/npm-inventory.json",
+      flat_inventory(pkg).stringify(),
+    )
+    guard @json.parse(@fs.read_file(candidate + "/bundle.json").text())
+      is Object(meta) else {
+      abort("bundle")
+    }
+    let next = meta.copy()
+    next["files"] = flat_inventory(candidate + "/payload")
+    next["integrity"] = Json::string(
+      "sha512-" +
+      @base64.encode(
+        Bytes::from_array(
+          @crypto.sha512(
+            @fs.read_file(candidate + "/payload/package.tgz").binary(),
+          )[:],
+        )[:],
+      ),
+    )
+    @fs.write_file(candidate + "/bundle.json", Json::object(next).stringify())
+    let result = cli(
+      exe,
+      [],
+      ["verify", "--bundle", candidate, "--json"],
+      cwd,
+      1,
+    )
+    assert_eq(get(get(result, "error"), "code"), "VERIFICATION_FAILED")
+    let receipt = get(get(result, "data"), "verification")
+    assert_eq(get(receipt, "ok"), false)
+    guard get(receipt, "checks") is Array(checks) else { abort("checks") }
+    let kind = if defect == "runtime" { "node" } else { "types" }
+    assert_true(
+      checks.any(c => {
+        get(c, "kind") == Json::string(kind) && get(c, "status") == "failed"
+      }),
+    )
+  }
+}
+
+///|
+/// Exercise the actual checked-in aggregate expression against success,
+/// failure, cancellation, skip and missing required consumer results.
+async fn gate_contract(root : String) -> Unit {
+  let workflow = @fs.read_file(root + "/.github/workflows/ci.yml").text()
+  guard workflow.find("jq -e '") is Some(start) else {
+    abort("missing CI gate")
+  }
+  let tail = workflow[start + 7:]
+  guard tail.find("' <<<") is Some(end) else {
+    abort("missing CI gate expression")
+  }
+  let expression = tail[:end].to_owned()
+  for state in ["success", "failure", "cancelled", "skipped", "missing"] {
+    let needs : Map[String, Json] = Map([])
+    for
+      key in [
+        "build", "consumer", "lint", "test", "test-native-zig", "test-scripts",
+      ] {
+      if key == "consumer" && state == "missing" {
+        continue
+      }
+      needs[key] = {
+        "result": if key == "consumer" {
+          state
+        } else {
+          "success"
+        },
+      }
+    }
+    let (code, _, _) = call(
+      "jq",
+      [
+        "-n",
+        "-e",
+        "--argjson",
+        "needs",
+        Json::object(needs).stringify(),
+        "$needs | " + expression,
+      ],
+      root,
+    )
+    assert_eq(code == 0, state == "success")
+  }
+  let release = @fs.read_file(root + "/.github/workflows/release.yml").text()
+  assert_true(release.contains("run: mise run test:pubman"))
+  assert_true(release.contains("needs: [plan, validate]"))
+}
+
+///|
+async fn bundle_contract(bundle : String) -> Unit {
+  let source = @json.parse(
+    @fs.read_file(bundle + "/payload/source-inventory.json").text(),
+  )
+  assert_true(get(source, "core.mbt") is String(_))
+  assert_true(get(source, "js/exports.mbt") is String(_))
+  assert_true(get(source, "wasm/exports.mbt") is String(_))
+  guard @json.parse(
+      @fs.read_file(bundle + "/payload/npm-inventory.json").text(),
+    )
+    is Object(files) else {
+    abort("npm inventory")
+  }
+  for
+    required in [
+      "js/index.mjs", "js/index.d.ts", "js/moonbit.d.ts", "wasm/index.mjs", "wasm/index.d.ts",
+      "internal/js/library.js", "internal/wasm/library.wasm",
+    ] {
+    assert_true(files.contains(required))
+  }
+  for name, _ in files {
+    assert_false(
+      name.has_suffix(".mbt") ||
+      name.has_suffix("moon.mod") ||
+      name.has_suffix("pubman.json") ||
+      name.contains(".npmrc") ||
+      name.contains("credentials"),
+    )
+  }
+}

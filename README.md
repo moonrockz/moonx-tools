@@ -7,6 +7,10 @@ Command-line tools for MoonBit, runnable with moonx.
   binaries with zig (`linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`, `host`).
   Moved from [moonrockz/smithy](https://github.com/moonrockz/smithy) with no CLI changes.
 
+- [`apps/pubman`](apps/pubman/README.md): `moonrockz/pubman` packages and verifies
+  one MoonBit library for Mooncakes and an npm ESM package with JS and Wasm-GC entries.
+  Authors supply adapters, wrappers, declarations and consumer checks.
+
 ## Local development
 
 Pinned toolchain (MoonBit `0.10.15+943464bfa`, Zig `0.17.0`):
@@ -27,6 +31,8 @@ Tool-specific checks:
 mise run test:native-zig   # native tests with zig as the C compiler (host wrapper)
 mise run test:consumer     # real cross-build + exec host against fixtures/consumer
 mise run test:scripts      # task script tests
+mise exec -- playwright install --with-deps chromium
+mise run test:pubman       # packed Node/Chromium/TypeScript consumers and previews
 ```
 
 Consumer usage:
@@ -97,12 +103,13 @@ See the [OpenSpec documentation](https://openspec.dev/docs/setup) for the workfl
 - `test-scripts`
 - `consumer` on Linux and macOS: real cross-build, header validation of the
   cross-built `.exe` (ELF/Mach-O/PE, mirroring `format.mbt`), `exec host` tests,
-  and execution of a host-compatible binary
+  execution of a host-compatible binary, and pubman packed-package verification
 - `ci-ok` gate
 
 ## Release
 
-`moonrockz/zig-cross` publishes to [mooncakes.io](https://mooncakes.io) independently
+`moonrockz/zig-cross` and `moonrockz/pubman` publish to [mooncakes.io](https://mooncakes.io).
+Both consumer fixtures remain unpublished. zig-cross releases independently
 of Smithy. First independent version is `0.1.2`, above published `0.1.1`.
 
 ```sh
@@ -117,7 +124,7 @@ mise run release:github X.Y.Z               # CI only: create GitHub release
 mise run release:credentials                # CI only: MOONCAKES_USER_TOKEN -> $MOON_HOME
 ```
 
-`.github/workflows/release.yml`: `plan` → `validate` (includes `test:consumer`) →
+`.github/workflows/release.yml`: `plan` → `validate` (includes `test:consumer` and `test:pubman`) →
 `publish` → `verify` (moonx `--version`/`--help`, consumer cross-build, `exec host`,
 bounded retries for prebuilt-Wasm readiness) → `release` (notes-only GitHub release).
 
