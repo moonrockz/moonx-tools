@@ -268,6 +268,9 @@ async fn load_config(path : String) -> Config {
   if !valid_name(name, false) || !semver(v) {
     invalid("invalid MoonBit name/version")
   }
+  if v.contains("+") {
+    invalid("release versions cannot contain build metadata; npm removes it")
+  }
   if field(meta, "private") == true {
     invalid("private modules cannot be published")
   }

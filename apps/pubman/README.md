@@ -81,8 +81,10 @@ Pubman reads scalar `name`, `version`, `description`, `license`, `repository`,
 escapes and comments. Unsupported metadata expressions, private modules, conflicting
 versions and local path dependencies fail. Legacy JSON manifests are unsupported.
 The selected library's version determines both registry versions; the tool's own
-version is provenance only. This repository keeps all module versions equal to
-its root `moon.mod` through `scripts/versions.mbtx`.
+version is provenance only. Release versions with build metadata are rejected
+because npm removes it and would change the shared registry identity. This
+repository keeps all module versions equal to its root `moon.mod` through
+`scripts/versions.mbtx`.
 
 ## Wrappers and package files
 

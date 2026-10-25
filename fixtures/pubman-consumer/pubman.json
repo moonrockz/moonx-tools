@@ -16,6 +16,6 @@
     { "source": "README.md", "destination": "README.md" },
     { "source": "LICENSE", "destination": "LICENSE" }
   ],
-  "checks": { "node": ["checks/node.mjs"], "browser": ["checks/browser.mjs"], "types": ["checks/consumer.mts"] },
+  "checks": { "node": ["checks/node.mjs", "checks/shared.mjs"], "browser": ["checks/browser.mjs", "checks/shared.mjs"], "types": ["checks/consumer.mts"] },
   "output": "_build/pubman/release"
 }

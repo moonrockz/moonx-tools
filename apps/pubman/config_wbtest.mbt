@@ -50,6 +50,31 @@ fn replace_field(json : Json, key : String, value : Json) -> Json {
 }
 
 ///|
+async test "release versions reject npm-normalized build metadata" {
+  let host = real_host(false)
+  let root = host.tmpdir(prefix="pubman-version-")
+  defer @fs.rmdir(root, recursive=true)
+  let path = config_fixture(root)
+  for version in ["1.2.3+build.1", "1.2.3-beta.1+build.1"] {
+    host.write_file(
+      root + "/moon.mod",
+      "name = \"owner/library\"\nversion = \"" + version + "\"\n",
+    )
+    let mut message = ""
+    ignore(load_config(path)) catch {
+      Failure(code, detail, status) => {
+        assert_eq(code, "INVALID_INPUT")
+        assert_eq(status, 2)
+        message = detail
+      }
+      err => raise err
+    }
+    assert_true(message.contains("build metadata"))
+    assert_false(@fs.exists(root + "/_build"))
+  }
+}
+
+///|
 async test "preview process/filesystem adapters reject effects and leave bytes unchanged" {
   let host = real_host(false)
   let root = host.tmpdir(prefix="pubman-config-")

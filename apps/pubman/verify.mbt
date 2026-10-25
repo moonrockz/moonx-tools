@@ -144,10 +144,14 @@ async fn verify_bundle(root : String, b : Json, host : Host) -> Json {
   let checks = field(config, "checks")
   let check_results : Array[Json] = []
   try {
+    let copied : Array[String] = []
     for kind in ["node", "browser", "types"] {
       for p in strings(field(checks, kind)) {
         safe_relative(p)
-        copy_file(host, root + "/payload/inputs/" + p, work + "/" + p)
+        if !copied.contains(p) {
+          copy_file(host, root + "/payload/inputs/" + p, work + "/" + p)
+          copied.push(p)
+        }
       }
     }
     for p in strings(field(checks, "node")) {
