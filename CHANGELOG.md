@@ -6,6 +6,16 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.3.1] - 2026-10-26
+
+Fix `zig-cross doctor` guidance for unverified toolchains. The `ZC_TOOLCHAIN_UNVERIFIED` next step now builds the assessed targets from `<package-path>` instead of always naming `linux-x64` and this repository's `fixtures/consumer`. Replace the placeholder with your package path and use the full runtime as the prerequisites explain. The README also documents finding severities and their report-status mapping.
+
+### 🐛 Bug fixes
+
+- *(zig-cross)* Use assessed targets in unverified next step ([#10](https://github.com/moonrockz/moonx-tools/pull/10)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.3.0...v0.3.1
+
 ## [0.3.0] - 2026-10-26
 
 Upgrade to stable MoonBit `0.10.17+d971670cd` with actionable zig-cross guidance for users and agents. Run `moonx moonrockz/zig-cross@0.3.0 doctor linux-x64 --json` for a schema-version-1 report with detected tools, stable finding codes, applicability and recovery steps. Build/exec notices use stderr, and failed targets retain raw diagnostics plus a doctor hint.
