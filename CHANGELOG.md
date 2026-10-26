@@ -6,6 +6,16 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.3.1] - 2026-10-26
+
+<!-- Highlights: replace this comment with a few sentences on what this release brings. -->
+
+### 🐛 Bug fixes
+
+- *(zig-cross)* Use assessed targets in unverified next step ([#10](https://github.com/moonrockz/moonx-tools/pull/10)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.3.0...v0.3.1
+
 ## [0.3.0] - 2026-10-26
 
 Upgrade to stable MoonBit `0.10.17+d971670cd` with actionable zig-cross guidance for users and agents. Run `moonx moonrockz/zig-cross@0.3.0 doctor linux-x64 --json` for a schema-version-1 report with detected tools, stable finding codes, applicability and recovery steps. Build/exec notices use stderr, and failed targets retain raw diagnostics plus a doctor hint.
