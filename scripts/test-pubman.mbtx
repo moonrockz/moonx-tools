@@ -1,6 +1,4 @@
-///|
-/// Build one fixture bundle per host, verify its installed consumers, then
-/// reuse those exact bytes for every backend's command/dry-run contracts.
+----
 import {
   "moonbitlang/async@0.22.5",
   "moonbitlang/async@0.22.5/fs",
@@ -10,7 +8,11 @@ import {
   "moonbitlang/core/encoding/base64",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
 
+///|
+/// Build one fixture bundle per host, verify its installed consumers, then
+/// reuse those exact bytes for every backend's command/dry-run contracts.
 ///|
 suberror TaskFailure {
   TaskFailure(String)

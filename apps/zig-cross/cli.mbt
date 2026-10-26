@@ -2,6 +2,7 @@
 pub(all) enum Command {
   Build(target_dir~ : String, targets~ : Array[Target], paths~ : Array[String])
   Exec(target~ : Target, argv~ : Array[String])
+  Doctor(targets~ : Array[Target], json~ : Bool)
   Help
   Version
 } derive(Eq, Debug)
@@ -16,12 +17,19 @@ pub fn help_text() -> String {
     #|Usage:
     #|  zig-cross build [--target-dir DIR] <target>... [-- <path>...]
     #|  zig-cross exec <target> -- <command> <arg>...
+    #|  zig-cross doctor [<target>...] [--json]
     #|  zig-cross --help | --version
     #|
     #|build  Build the native release binaries for each target with `moon build`, check the
     #|       header of each executable, and print a summary. The wrappers go to DIR/zig/<target>.
     #|       DIR is "_build/cross" by default. The output of a target goes to DIR/<target>.
     #|exec   Run the command with MOON_CC and MOON_AR set to the wrappers of one target.
+    #|
+    #|doctor Diagnose without building; --json emits schema_version:1 for agents.
+    #|Set ZIG_CROSS_RUNTIME=sync for the experimental, version-bounded synchronous runtime.
+    #|Full runtime is the default. Run doctor to discover prerequisites and next steps.
+    #|Windows: OsString arguments, environment variables and paths may be incorrect.
+    #|Build Windows programs using OsString on Windows. Header checks are insufficient.
     #|
     #|Targets: linux-x64, linux-arm64, darwin-arm64, darwin-x64, windows-x64, host
     #|Zig 0.17.0 must be on PATH. zig-cross runs on Linux and macOS only.
@@ -102,6 +110,31 @@ pub fn parse_args(args : Array[String]) -> Result[Command, String] {
     "--version" => Ok(Version)
     "build" => parse_build(args[1:])
     "exec" => parse_exec(args[1:])
-    other => Err("unknown command: \{other} (expected build or exec)")
+    "doctor" => parse_doctor(args[1:])
+    other => Err("unknown command: \{other} (expected build, exec or doctor)")
   }
+}
+
+///|
+fn parse_doctor(args : ArrayView[String]) -> Result[Command, String] {
+  let targets = []
+  let mut json = false
+  for arg in args {
+    if arg == "--json" {
+      json = true
+    } else if arg.has_prefix("-") {
+      return Err("unknown option: \{arg}")
+    } else {
+      match parse_target(arg) {
+        Ok(target) => if !targets.contains(target) { targets.push(target) }
+        Err(message) => return Err(message)
+      }
+    }
+  }
+  if targets.is_empty() {
+    for name in all_target_names() {
+      targets.push(Target::parse(name).unwrap())
+    }
+  }
+  Ok(Doctor(targets~, json~))
 }

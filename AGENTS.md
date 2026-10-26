@@ -6,7 +6,7 @@ MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
 ## Toolchain
 
 - `mise` installs and pins every tool (`.config/mise/config.toml`). Run `mise trust` and then `mise install` once.
-- MoonBit `0.10.15+943464bfa`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
+- MoonBit `0.10.17+d971670cd`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
 - `moon.work` lists workspace members (`apps/*`, `fixtures/*`). `moon build`, `moon test`, `moon check`, `moon fmt` at the root act on all of them.
 
 ## OpenSpec

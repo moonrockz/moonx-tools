@@ -13,7 +13,7 @@ Command-line tools for MoonBit, runnable with moonx.
 
 ## Local development
 
-Pinned toolchain (MoonBit `0.10.15+943464bfa`, Zig `0.17.0`):
+Pinned toolchain (MoonBit `0.10.17+d971670cd`, Zig `0.17.0`):
 
 ```sh
 mise trust
@@ -38,10 +38,14 @@ mise run test:pubman       # packed Node/Chromium/TypeScript consumers and previ
 Consumer usage:
 
 ```sh
-moonx moonrockz/zig-cross@<version> build linux-x64 darwin-arm64 -- fixtures/consumer
+moonx moonrockz/zig-cross@<version> doctor linux-x64 --json
+moonx moonrockz/zig-cross@<version> build linux-x64 -- fixtures/consumer
+ZIG_CROSS_RUNTIME=sync moonx moonrockz/zig-cross@<version> build darwin-arm64 -- fixtures/consumer
 moonx moonrockz/zig-cross@<version> exec host -- moon test fixtures/consumer --target native
 moonx moonrockz/zig-cross@<version> --help
 ```
+
+Run `doctor` before choosing a target or upgrading MoonBit. It emits stable codes and actionable steps for users and agents. Full-runtime Linux and local macOS header fixes are version-bounded. `ZIG_CROSS_RUNTIME=sync` is an explicit experimental subset for cross-target consumers that do not need the new asynchronous runtime APIs. See the [compatibility contract](apps/zig-cross/README.md#moonbit-01017-compatibility).
 
 Windows note: a `windows-x64` binary that zig cross-builds is wrong for MoonBit code
 that uses `OsString` (see `apps/zig-cross/README.md`). Build Windows binaries on Windows.

@@ -1,3 +1,16 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonrockz/moonspec@0.11.0",
+  "moonrockz/expect@0.6.1",
+}
+----
+
 ///|
 /// Publish the public modules to mooncakes.io (CI only), in dependency order.
 ///
@@ -8,15 +21,6 @@
 ///
 /// Usage: `mise run release:publish`, or `moonx scripts/publish.mbtx`. It needs the credentials that
 /// `scripts/credentials.mbtx` writes.
-import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/core/env",
-  "moonrockz/moonspec@0.11.0",
-  "moonrockz/expect@0.6.1",
-}
 
 ///|
 /// The packages to publish, with their module names, in dependency order. Add a line for each public
@@ -165,6 +169,28 @@ async fn verify_cli(version : String) -> Unit {
         fail_with("published CLI version differs from " + version)
       }
       println(out.trim())
+    }
+    if name == "moonrockz/zig-cross" {
+      let (code, stdout, stderr) = @process.collect_output("moonx", [
+        "\{name}@\{version}",
+        "doctor",
+        "linux-x64",
+        "--json",
+      ])
+      if code != 0 {
+        fail_with("published doctor failed: " + stderr.text())
+        return
+      }
+      guard @json.parse(stdout.text())
+        is {
+          "schema_version": Number(1, ..),
+          "status": String("warning" | "ok"),
+          ..
+        } else {
+        fail_with("published doctor did not return the expected schema/status")
+        return
+      }
+      println("✅ Published doctor schema and Linux assessment verified")
     }
   }
 }

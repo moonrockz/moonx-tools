@@ -31,12 +31,25 @@ async fn write_script(path : String, text : String) -> Unit {
 ///|
 /// Write the `cc` and `ar` wrappers of one target to `<target_dir>/zig/<target>`, and return the
 /// environment that makes moon use them.
-async fn prepare(target : Target, target_dir : String) -> Map[String, String] {
+async fn prepare(
+  target : Target,
+  target_dir : String,
+  detected : Environment,
+) -> Map[String, String] {
   let dir = absolute(join(join(target_dir, "zig"), target.name()))
   @fs.mkdir(dir, recursive=true, allow_exist=true)
   let cc = join(dir, "cc")
   let ar = join(dir, "ar")
-  write_script(cc, cc_wrapper(target))
+  let flags = header_flags(target, detected)
+  let wrapper = if flags.is_empty() {
+    cc_wrapper(target)
+  } else {
+    cc_wrapper(target).replace(
+      old="exec zig cc ",
+      new="exec zig cc " + flags + " ",
+    )
+  }
+  write_script(cc, wrapper)
   write_script(ar, ar_wrapper(target))
   { "MOON_CC": cc, "MOON_AR": ar }
 }
@@ -65,13 +78,23 @@ async fn build_target(
   target : Target,
   target_dir : String,
   paths : Array[String],
+  view : String?,
+  detected : Environment,
 ) -> Array[Row] {
-  let env = prepare(target, target_dir)
+  let env = prepare(target, target_dir, detected)
+  if view is Some(path) {
+    env["MOON_TOOLCHAIN_ROOT"] = path
+  }
   let out = join(target_dir, target.name())
   let args = ["build", "--target", "native", "--release", "--target-dir", out]
   args.append(paths)
   println("🔨 Building for \{target.name()}...")
-  let code = @shell.Cmd("moon", args, env~, stdout=Inherit, stderr=Inherit).status()
+  let code = @shell.Cmd("moon", args, env~, stdout=Inherit, stderr=Inherit).status() catch {
+    error => {
+      @stdio.stderr.write("zig-cross: moon launch failed: \{error}\n")
+      1
+    }
+  }
   if code != 0 {
     return [
       {
@@ -155,11 +178,27 @@ async fn run_build(
   targets : Array[Target],
   paths : Array[String],
 ) -> Int32 {
+  let detected = detect_environment()
+  emit_notices(report(detected, targets))
+  if !execution_allowed(detected) {
+    return 1
+  }
+  let view = runtime_view(detected)
+  defer (if view is Some(path) { @fs.rmdir(path, recursive=true) })
   let rows = []
   for target in targets {
-    rows.append(build_target(target, target_dir, paths))
+    rows.append(build_target(target, target_dir, paths, view, detected))
   }
   if print_summary(rows) > 0 {
+    let hinted : Array[Target] = []
+    for row in rows {
+      if row.problem is Some(_) && !hinted.contains(row.target) {
+        hinted.push(row.target)
+        @stdio.stderr.write(
+          "zig-cross: run zig-cross doctor \{row.target.name()} for target-specific guidance.\n",
+        )
+      }
+    }
     1
   } else {
     0
@@ -169,7 +208,17 @@ async fn run_build(
 ///|
 /// Run a command with `MOON_CC` and `MOON_AR` set to the wrappers of `target`.
 async fn run_exec(target : Target, argv : Array[String]) -> Int32 {
-  let env = prepare(target, default_target_dir)
+  let detected = detect_environment()
+  emit_notices(report(detected, [target]))
+  if !execution_allowed(detected) {
+    return 1
+  }
+  let view = runtime_view(detected)
+  defer (if view is Some(path) { @fs.rmdir(path, recursive=true) })
+  let env = prepare(target, default_target_dir, detected)
+  if view is Some(path) {
+    env["MOON_TOOLCHAIN_ROOT"] = path
+  }
   let code = @shell.Cmd(
     argv[0],
     argv[1:].to_owned(),
@@ -193,10 +242,39 @@ async fn main {
     fail("zig-cross runs on Linux or macOS only")
     return
   }
-  match parse_args(@env.args()[1:].to_owned()) {
+  let args = @env.args()[1:].to_owned()
+  match parse_args(args) {
     Err(message) => {
-      @stdio.stderr.write("❌ zig-cross: \{message}\n\n\{help_text()}\n")
+      if !args.is_empty() && args[0] == "doctor" && args.contains("--json") {
+        let empty : Environment = {
+          host_os: None,
+          host_arch: None,
+          zig_cross: version_text(),
+          moon: None,
+          compiler: None,
+          zig: None,
+          toolchain_root: None,
+          runtime_fingerprint: None,
+          runtime_mode: requested_mode(),
+          darwin_sdk: None,
+          toolchain_overrides: [],
+        }
+        println(@json.to_json(report(empty, [], usage=message)).stringify())
+      } else {
+        @stdio.stderr.write("❌ zig-cross: \{message}\n\n\{help_text()}\n")
+      }
       @sys.exit(2)
+    }
+    Ok(Doctor(targets~, json~)) => {
+      let result = report(detect_environment(), targets)
+      if json {
+        println(@json.to_json(result).stringify())
+      } else {
+        @stdio.stdout.write(report_text(result))
+      }
+      if result.status == "error" {
+        @sys.exit(1)
+      }
     }
     Ok(Help) => @stdio.stdout.write(help_text() + "\n")
     Ok(Version) => @stdio.stdout.write(version_text() + "\n")

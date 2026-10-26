@@ -140,8 +140,8 @@ jobs:
       - name: Verify pubman installed package consumers
         run: mise run test:pubman
 
-      - name: Cross-build the consumer fixture
-        run: mise run build:cross -- ${{ matrix.cross }} -- fixtures/consumer
+      - name: Verify consumer builds, doctor and runtime compatibility
+        run: mise run test:consumer
 
       - name: Check the cross-built output architecture
         shell: bash
@@ -190,22 +190,6 @@ jobs:
                   fail(f"{target}: expected PE machine 34404, found {machine}")
               print(f"OK {target}: PE machine {machine}")
           PY
-
-      - name: Run exec host on the consumer tests
-        run: moon run apps/zig-cross --target wasm -- exec host -- moon test fixtures/consumer --target native
-
-      - name: Execute a host-compatible binary
-        shell: bash
-        run: |
-          set -euo pipefail
-          moon build fixtures/consumer --target native --release
-          host_exe="$(find _build/native/release/build/moonrockz/consumer -name '*.exe' | sort | head -n 1)"
-          if [ -z "$host_exe" ]; then
-            echo "::error::no host .exe under _build/native/release/build/moonrockz/consumer"
-            exit 1
-          fi
-          chmod +x "$host_exe"
-          "$host_exe"
 
   # The only check that branch protection needs. Add every new job to `needs`.
   # `if: always()` is required: without it this job is skipped when a needed job fails, and

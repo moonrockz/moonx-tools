@@ -1,14 +1,16 @@
-///|
-/// Check MoonBit formatting and run the type checker across the workspace.
-///
-/// Usage: `mise run lint:moonbit`, or `moonx scripts/lint-moonbit.mbtx`.
+----
 import {
   "moonbitlang/async@0.22.5",
   "moonbitlang/async@0.22.5/process",
   "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
+----
 
+///|
+/// Check MoonBit formatting and run the type checker across the workspace.
+///
+/// Usage: `mise run lint:moonbit`, or `moonx scripts/lint-moonbit.mbtx`.
 ///|
 async fn moon(args : Array[String]) -> Int {
   @process.run("moon", args, stdout=@stdio.stdout, stderr=@stdio.stderr)
