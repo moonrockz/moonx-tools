@@ -284,7 +284,8 @@ fn report(
           [],
           [
             step(
-              "zig-cross build linux-x64 -- fixtures/consumer", "Run in moonrockz/moonx-tools; for your project use its package path and requested target.",
+              "zig-cross build \{names.join(" ")} -- <package-path>",
+              "Replace <package-path>. Unset ZIG_CROSS_RUNTIME or set it to full; an unassessed toolchain cannot use sync. A successful build checks compilation and linking, not runtime behavior.",
             ),
           ],
         ),

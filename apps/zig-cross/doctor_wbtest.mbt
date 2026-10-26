@@ -150,3 +150,41 @@ test "repeated build targets emit each compatibility finding once" {
     1,
   )
 }
+
+///|
+test "unverified toolchain step builds the assessed targets from a placeholder path" {
+  let env = {
+    ..stock_environment("full"),
+    host_os: Some("Darwin"),
+    toolchain_overrides: ["MOON_CORE_OVERRIDE"],
+  }
+  let result = report(env, [DarwinArm64, DarwinX64, WindowsX64])
+  guard result.findings.search_by(f => f.code == "ZC_TOOLCHAIN_UNVERIFIED")
+    is Some(index) else {
+    abort("unverified finding")
+  }
+  let unverified = result.findings[index]
+  assert_eq(unverified.severity, "unverified")
+  assert_eq(unverified.targets, ["darwin-arm64", "darwin-x64", "windows-x64"])
+  assert_eq(unverified.next_steps.length(), 1)
+  let next = unverified.next_steps[0]
+  assert_eq(next.kind, "command")
+  assert_eq(
+    next.command,
+    "zig-cross build darwin-arm64 darwin-x64 windows-x64 -- <package-path>",
+  )
+  assert_true(next.prerequisites.contains("<package-path>"))
+  assert_false(next.prerequisites.contains("fixtures/consumer"))
+  let args = next.command.split(" ").map(arg => arg.to_owned()).collect()
+  assert_eq(args[0], "zig-cross")
+  assert_eq(
+    parse_args(args[1:].to_owned()),
+    Ok(
+      Build(
+        target_dir=default_target_dir,
+        targets=[DarwinArm64, DarwinX64, WindowsX64],
+        paths=["<package-path>"],
+      ),
+    ),
+  )
+}
