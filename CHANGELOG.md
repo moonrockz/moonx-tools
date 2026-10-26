@@ -6,6 +6,20 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.3.0] - 2026-10-26
+
+Upgrade to stable MoonBit `0.10.17+d971670cd` with actionable zig-cross guidance for users and agents. Run `moonx moonrockz/zig-cross@0.3.0 doctor linux-x64 --json` for a schema-version-1 report with detected tools, stable finding codes, applicability and recovery steps. Build/exec notices use stderr, and failed targets retain raw diagnostics plus a doctor hint.
+
+Full runtime remains the default, with version/fingerprint-bound Linux header injection and detected local macOS SDK headers. Explicit `ZIG_CROSS_RUNTIME=sync` selects an experimental six-file synchronous runtime in a temporary toolchain view without editing the installed toolchain. It excludes the runtime's event loop, async filesystem, networking, processes, TLS, thread pools and watchers; consumers needing excluded symbols fail at link time and should use a native compiler on the target OS. Unknown/custom toolchains cannot inherit this whitelist.
+
+Linux/macOS CI qualifies the upgrade, all five cross-target headers, doctor/stream contracts, host runtime APIs and dependencies, and pubman's installed Node/Chromium/TypeScript consumers and previews. Both tools share version 0.3.0. Windows output is link/header checked only: programs using OsString for arguments, environment variables or paths must still be built on Windows. See the [compatibility guide](https://github.com/moonrockz/moonx-tools/blob/v0.3.0/apps/zig-cross/README.md#moonbit-01017-compatibility) for mode selection and limits.
+
+### 🚀 Features
+
+- Upgrade MoonBit and add zig-cross doctor ([#6](https://github.com/moonrockz/moonx-tools/pull/6)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.2.0...v0.3.0
+
 ## [0.2.0] - 2026-10-25
 
 First release of `moonrockz/pubman`, a CLI for packaging one MoonBit library as
