@@ -18,6 +18,10 @@ Linux/macOS CI qualifies the upgrade, all five cross-target headers, doctor/stre
 
 - Upgrade MoonBit and add zig-cross doctor ([#6](https://github.com/moonrockz/moonx-tools/pull/6)) by @DamianReeves
 
+### Fixes
+
+- Emit each compatibility notice once for repeated build targets while preserving the requested build sequence.
+
 **Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.2.0...v0.3.0
 
 ## [0.2.0] - 2026-10-25

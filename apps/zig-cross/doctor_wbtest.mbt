@@ -135,3 +135,18 @@ test "missing tools are errors and old pin is assessed without new runtime defec
   assert_eq(report(old, [LinuxX64]).status, "ok")
   assert_eq(report(old, [WindowsX64]).status, "warning")
 }
+
+///|
+test "repeated build targets emit each compatibility finding once" {
+  let result = report(stock_environment("full"), [
+    LinuxX64,
+    LinuxX64,
+    DarwinArm64,
+    LinuxX64,
+  ])
+  assert_eq(result.targets, ["linux-x64", "darwin-arm64"])
+  assert_eq(
+    result.findings.filter(f => f.code == "ZC_LINUX_NAME_MAX").length(),
+    1,
+  )
+}

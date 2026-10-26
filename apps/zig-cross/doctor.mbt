@@ -200,6 +200,13 @@ fn report(
   targets : Array[Target],
   usage? : String,
 ) -> Report {
+  let unique : Array[Target] = []
+  for target in targets {
+    if !unique.contains(target) {
+      unique.push(target)
+    }
+  }
+  let targets = unique
   let names = targets.map(t => t.name())
   let findings : Array[Finding] = []
   if usage is Some(message) {
