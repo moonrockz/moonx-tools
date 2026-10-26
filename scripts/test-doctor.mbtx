@@ -1,0 +1,270 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+----
+
+///|
+/// Exercise the installed command contract from outside a project with real and controlled tools.
+async fn main {
+  let root = @env.current_dir().unwrap()
+  @shell.Cmd("moon", ["build", "apps/zig-cross", "--target", "wasm"]).run()
+  let wasm = root +
+    "/_build/wasm/debug/build/moonrockz/zig-cross/zig-cross.wasm"
+  let work = @fs.realpath(@fs.tmpdir(prefix="zig-cross-doctor-"))
+  defer @fs.rmdir(work, recursive=true)
+  let base = { "ZIG_CROSS_RUNTIME": "full" }
+  let doctor = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "linux-x64", "--json"],
+    cwd=work,
+    env=base,
+  ).output()
+  assert_eq(doctor.exit_code(), 0)
+  guard @json.parse(doctor.stdout())
+    is { "schema_version": Number(1, ..), "environment": Object(fields), .. } else {
+    abort("doctor envelope")
+  }
+  assert_true(fields["runtime_fingerprint"] is String(_))
+  assert_false(@fs.exists(work + "/_build"))
+  assert_eq(doctor.stderr(), "")
+  let human = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "linux-x64"],
+    cwd=work,
+    env=base,
+  ).output()
+  assert_true(human.stdout().contains("ZC_LINUX_NAME_MAX"))
+  let usage = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "--bad", "--json"],
+    cwd=work,
+  ).output()
+  assert_eq(usage.exit_code(), 2)
+  assert_true(@json.valid(usage.stdout()))
+  assert_true(usage.stdout().contains("ZC_USAGE"))
+  // Fake tools exercise missing, malformed, timed-out and noisy probes without touching PATH globally.
+  let bin = work + "/bin"
+  @fs.mkdir(bin)
+  for
+    (name, body) in [
+      ("moon", "echo child-noise; echo raw-probe-error >&2; exit 7"),
+      ("zig", "exit 9"),
+    ] {
+    @fs.write_file(
+      bin + "/" + name,
+      "#!/bin/sh\necho probe >> " + work + "/probes\n" + body + "\n",
+      permission=0o755,
+    )
+  }
+  let fake = { "PATH": bin + ":/usr/bin:/bin", "ZIG_CROSS_RUNTIME": "full" }
+  // Resolve moonrun before replacing PATH, since it is itself part of the toolchain under test.
+  let moonrun = @shell.Cmd("/bin/sh", ["-c", "command -v moonrun"])
+    .output()
+    .stdout()
+    .trim()
+    .to_owned()
+  let missing = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "doctor", "--json"],
+    env=fake,
+    cwd=work,
+  ).output()
+  assert_eq(missing.exit_code(), 1)
+  assert_true(@json.valid(missing.stdout()))
+  assert_true(missing.stdout().contains("ZC_TOOL_MISSING"))
+  assert_false(missing.stdout().contains("child-noise"))
+  assert_eq(missing.stderr(), "")
+  @fs.remove(work + "/probes")
+  let help = @shell.Cmd(moonrun, [wasm, "--", "--help"], env=fake, cwd=work).output()
+  assert_eq(help.exit_code(), 0)
+  assert_true(help.stdout().contains("doctor"))
+  assert_false(help.stderr().contains("raw-probe-error"))
+  assert_false(@fs.exists(work + "/probes"))
+  let failed = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "build", "linux-arm64"],
+    env=fake,
+    cwd=work,
+  ).output()
+  assert_eq(failed.exit_code(), 1)
+  assert_true(failed.stderr().contains("raw-probe-error"))
+  assert_true(failed.stderr().contains("zig-cross doctor linux-arm64"))
+  let child = @shell.Cmd(
+    moonrun,
+    [
+      wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "cat; echo child-err >&2; exit 23",
+    ],
+    env=fake,
+    cwd=work,
+    stdin=Text("child-input\n"),
+  ).output()
+  assert_eq(child.exit_code(), 23)
+  assert_eq(child.stdout(), "child-input\n")
+  assert_true(child.stderr().contains("child-err"))
+  // A successful PE/header check must still carry the Windows semantic warning.
+  let pe_dir = work + "/pe/windows-x64/native/release/build"
+  @fs.mkdir(pe_dir, recursive=true)
+  let pe = FixedArray::make(256, b'\x00')
+  pe[0] = b'M'
+  pe[1] = b'Z'
+  pe[60] = b'\x80'
+  pe[128] = b'P'
+  pe[129] = b'E'
+  pe[132] = b'\x64'
+  pe[133] = b'\x86'
+  @fs.write_file(pe_dir + "/fixture.exe", Bytes::from_array(pe))
+  @fs.write_file(
+    bin + "/moon",
+    "#!/bin/sh\nif [ \"$1\" = build ]; then exit 0; else exit 7; fi\n",
+    permission=0o755,
+  )
+  let windows = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "build", "--target-dir", work + "/pe", "windows-x64"],
+    env=fake,
+    cwd=work,
+  ).output()
+  assert_eq(windows.exit_code(), 0)
+  assert_true(windows.stderr().contains("ZC_WINDOWS_OSSTRING"))
+  @fs.write_file(bin + "/moon", "#!/bin/sh\nsleep 10\n", permission=0o755)
+  let timeout = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "doctor", "host", "--json"],
+    env=fake,
+    cwd=work,
+  ).output(timeout_ms=8000)
+  assert_eq(timeout.exit_code(), 1)
+  assert_true(timeout.stdout().contains("ZC_TOOL_MISSING"))
+  @fs.write_file(bin + "/moon", "#!/bin/sh\necho malformed\n", permission=0o755)
+  let malformed = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "doctor", "host", "--json"],
+    env=fake,
+    cwd=work,
+  ).output()
+  assert_eq(malformed.exit_code(), 1)
+  assert_true(@json.valid(malformed.stdout()))
+  // The actual selected mode is visible to doctor, and only that selection enables isolation.
+  let sync = { "ZIG_CROSS_RUNTIME": "sync" }
+  let active = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "windows-x64", "--json"],
+    env=sync,
+    cwd=work,
+  ).output()
+  assert_eq(active.exit_code(), 0)
+  assert_true(active.stdout().contains("ZC_COMPATIBILITY_MODE"))
+  assert_true(active.stdout().contains("ZC_WINDOWS_OSSTRING"))
+  let runtime_before = fields["runtime_fingerprint"]
+  let invalid = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "echo should-not-run"],
+    env={ "ZIG_CROSS_RUNTIME": "typo" },
+    cwd=work,
+  ).output()
+  assert_eq(invalid.exit_code(), 1)
+  assert_false(invalid.stdout().contains("should-not-run"))
+  let custom = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "echo should-not-run"],
+    env={ "ZIG_CROSS_RUNTIME": "sync", "MOON_CORE_OVERRIDE": "/custom/core" },
+    cwd=work,
+  ).output()
+  assert_eq(custom.exit_code(), 1)
+  assert_true(custom.stderr().contains("ZC_SYNC_UNAVAILABLE"))
+  assert_false(custom.stdout().contains("should-not-run"))
+  // A real package dependency calls retained runtime APIs. The negative fixture calls an excluded symbol.
+  let project = work + "/consumer"
+  @fs.mkdir(project + "/dep", recursive=true)
+  @fs.write_file(
+    project + "/moon.mod",
+    "name = \"doctor/consumer\"\nversion = \"0.0.0\"\n",
+  )
+  @fs.write_file(
+    project + "/moon.pkg",
+    "import { \"doctor/consumer/dep\", }\nsupported_targets = \"native\"\npkgtype(kind: \"executable\")\n",
+  )
+  @fs.write_file(
+    project + "/dep/moon.pkg",
+    "import { \"moonbitlang/core/env\", \"moonbitlang/core/encoding/utf8\", }\nsupported_targets = \"native\"\n",
+  )
+  @fs.write_file(
+    project + "/main.mbt",
+    "fn main { if !(try! @dep.verify()) { abort(\"runtime checks\") }; println(\"runtime APIs and dependency passed\") }\n",
+  )
+  @fs.write_file(
+    project + "/dep/dep.mbt",
+    (
+      #|#borrow(path)
+      #|extern "C" fn stat(path : Bytes) -> Int = "moonbit_stat_ffi"
+      #|#borrow(value)
+      #|extern "C" fn length(value : Bytes, offset : Int) -> Int = "moonbit_rt_strlen"
+      #|pub fn verify() -> Bool raise {
+      #|  let unicode = "hello λ世界"
+      #|  let env_ok = @env.get_env_var("PATH") is Some(_) && !@env.args().is_empty() && @env.current_dir() is Some(_)
+      #|  let entropy_ok = @env.rand(16) is Some(bytes) && bytes.length() == 16
+      #|  env_ok && entropy_ok && stat(b"moon.mod\x00") == 0 && length(b"abc\x00", 0) == 3 && @utf8.decode(@utf8.encode(unicode)) == unicode
+      #|}
+    ),
+  )
+  let built = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "build", "host", "--", "."],
+    env=sync,
+    cwd=project,
+  ).output()
+  if built.exit_code() != 0 {
+    println(built.stdout())
+    println(built.stderr())
+  }
+  assert_eq(built.exit_code(), 0)
+  let exe = project + "/_build/cross/host/native/release/build/consumer.exe"
+  assert_true(
+    @shell.Cmd(exe, [], cwd=project)
+    .output()
+    .stdout()
+    .contains("runtime APIs and dependency passed"),
+  )
+  let view = @shell.Cmd(
+    "moonrun",
+    [
+      wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "printf '%s' \"$MOON_TOOLCHAIN_ROOT\"",
+    ],
+    env=sync,
+    cwd=work,
+  ).output()
+  assert_eq(view.exit_code(), 0)
+  assert_false(@fs.exists(view.stdout()))
+  @fs.write_file(
+    project + "/main.mbt",
+    "extern \"C\" fn platform() -> Int = \"moonbit_rt_get_platform\"\nfn main { println(platform()) }\n",
+  )
+  let excluded = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "build", "host", "--", "."],
+    env=sync,
+    cwd=project,
+  ).output()
+  assert_eq(excluded.exit_code(), 1)
+  assert_true(excluded.stderr().contains("moonbit_rt_get_platform"))
+  assert_true(excluded.stderr().contains("zig-cross doctor host"))
+  let after = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "linux-x64", "--json"],
+    cwd=work,
+    env=base,
+  ).output()
+  guard @json.parse(after.stdout())
+    is { "environment": Object(after_fields), .. } else {
+    abort("after report")
+  }
+  assert_eq(after_fields["runtime_fingerprint"], runtime_before)
+  println(
+    "Doctor CLI, stream/exit contracts, isolated runtime APIs and exclusions passed",
+  )
+}

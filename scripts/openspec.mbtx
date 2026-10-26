@@ -1,8 +1,4 @@
-///|
-/// Regenerate OpenSpec skills for every supported project agent without reading or changing
-/// the contributor's global OpenSpec profile or delivery preferences.
-///
-/// Usage: `mise run openspec:sync`, or `moonx scripts/openspec.mbtx`.
+----
 import {
   "moonbitlang/async@0.22.5",
   "moonbitlang/async@0.22.5/fs",
@@ -10,7 +6,13 @@ import {
   "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/x@0.5.5/sys",
 }
+----
 
+///|
+/// Regenerate OpenSpec skills for every supported project agent without reading or changing
+/// the contributor's global OpenSpec profile or delivery preferences.
+///
+/// Usage: `mise run openspec:sync`, or `moonx scripts/openspec.mbtx`.
 ///|
 async fn main {
   let config_home = "_build/openspec/xdg"

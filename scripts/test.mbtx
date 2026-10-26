@@ -1,3 +1,14 @@
+----
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+----
+
 ///|
 /// Run the tests of every workspace member for one or more targets.
 ///
@@ -7,15 +18,6 @@
 /// `moon test <path>` tests only the package at exactly that path, not its
 /// sub-packages, so packages are discovered from `moon.work` recursively.
 /// The tests module uses async and runs on js and native only.
-import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/stdio",
-  "moonbitlang/core/env",
-  "moonbitlang/x@0.5.5/sys",
-}
-
 ///|
 let all_targets : Array[String] = ["wasm", "wasm-gc", "js", "native"]
 

@@ -1,3 +1,4 @@
+----
 import {
   "moonbitlang/async@0.22.5",
   "moonbitlang/async@0.22.5/fs",
@@ -10,6 +11,7 @@ import {
   "moonrockz/moonspec@0.11.0",
   "moonrockz/expect@0.6.1",
 }
+----
 
 ///|
 /// Release tooling. A release is a pull request that sets one version across the workspace, with

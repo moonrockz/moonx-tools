@@ -59,7 +59,7 @@ test "parse_args flags and unknown commands" {
   assert_eq(parse_args([]), Ok(Help))
   assert_eq(
     parse_args(["frobnicate"]),
-    Err("unknown command: frobnicate (expected build or exec)"),
+    Err("unknown command: frobnicate (expected build, exec or doctor)"),
   )
 }
 
