@@ -8,7 +8,7 @@ is 0.x, a minor release can contain breaking changes.
 
 ## [0.3.1] - 2026-10-26
 
-<!-- Highlights: replace this comment with a few sentences on what this release brings. -->
+Fix `zig-cross doctor` guidance for unverified toolchains. The `ZC_TOOLCHAIN_UNVERIFIED` next step now builds the assessed targets from `<package-path>` instead of always naming `linux-x64` and this repository's `fixtures/consumer`. Replace the placeholder with your package path and use the full runtime as the prerequisites explain. The README also documents finding severities and their report-status mapping.
 
 ### 🐛 Bug fixes
 
