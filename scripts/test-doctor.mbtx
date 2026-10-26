@@ -149,6 +149,16 @@ async fn main {
   ).output()
   assert_eq(malformed.exit_code(), 1)
   assert_true(@json.valid(malformed.stdout()))
+  @fs.remove(bin + "/moon")
+  let absent = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "build", "linux-x64"],
+    env=fake,
+    cwd=work,
+  ).output()
+  assert_eq(absent.exit_code(), 1)
+  assert_true(absent.stderr().contains("moon launch failed"))
+  assert_true(absent.stderr().contains("zig-cross doctor linux-x64"))
   // The actual selected mode is visible to doctor, and only that selection enables isolation.
   let sync = { "ZIG_CROSS_RUNTIME": "sync" }
   let active = @shell.Cmd(

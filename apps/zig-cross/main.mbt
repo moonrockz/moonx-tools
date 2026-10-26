@@ -89,7 +89,12 @@ async fn build_target(
   let args = ["build", "--target", "native", "--release", "--target-dir", out]
   args.append(paths)
   println("🔨 Building for \{target.name()}...")
-  let code = @shell.Cmd("moon", args, env~, stdout=Inherit, stderr=Inherit).status()
+  let code = @shell.Cmd("moon", args, env~, stdout=Inherit, stderr=Inherit).status() catch {
+    error => {
+      @stdio.stderr.write("zig-cross: moon launch failed: \{error}\n")
+      1
+    }
+  }
   if code != 0 {
     return [
       {

@@ -22,14 +22,14 @@
 
 ## 4. Integration and upgrade acceptance
 
-- [ ] 4.1 Add focused CLI integration verification using MoonBit task automation with pinned imports if a runner is needed; verify clean JSON stdout, no diagnostic wrapper generation, missing tools, build-failure hints, and exec stream/exit preservation on Linux and macOS.
+- [x] 4.1 Add focused CLI integration verification using MoonBit task automation with pinned imports if a runner is needed; verify clean JSON stdout, no diagnostic wrapper generation, missing tools, build-failure hints, and exec stream/exit preservation on Linux and macOS.
 - [x] 4.2 Run zig-cross unit tests for its Wasm and native backends, `mise run test:native-zig`, and `mise run test:consumer` on the existing pin and upgraded candidate; record all five sync cross-target header checks, host execution, runtime/dependency coverage and expected excluded-API failure.
 - [x] 4.3 Run `mise run format`, `mise run lint`, `mise run validate`, and `openspec validate --all --strict`; verify the diff covers the expanded upgrade and guidance scope.
 
 ## 5. Repository upgrade and delivery
 
 - [x] 5.1 Verify latest stable in isolation, update all version pins/URLs and toolchain documentation, migrate script imports, and resolve repository-wide compiler fallout.
-- [ ] 5.2 Run full check, script tests, pubman Node/browser/TypeScript consumers and previews, plus doctor integration on Linux/macOS through existing CI/release gates. Exercise emitted next steps and record material limits.
+- [x] 5.2 Run full check, script tests, pubman Node/browser/TypeScript consumers and previews, plus doctor integration on Linux/macOS through existing CI/release gates. Exercise emitted next steps and record material limits.
 
 ## Workflow follow-up
 
