@@ -191,6 +191,44 @@ jobs:
               print(f"OK {target}: PE machine {machine}")
           PY
 
+  # MoonBit 0.10.18 is newer than the pin and is what consumers use. It compiles the full runtime
+  # (dir.c, fs.c) and the moonbitlang/async C stubs, which need the zig-cross header fix. A Linux
+  # host has no macOS SDK, so this job also checks the sys/vnode.h shim for the darwin targets.
+  cross-moonbit-0-10-18:
+    name: Cross-build (MoonBit 0.10.18)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 30
+    env:
+      MOONBIT_VERSION: 0.10.18+6c83a7f62
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install MoonBit ${{ env.MOONBIT_VERSION }} in front of the pinned one
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$RUNNER_TEMP/moonbit-$MOONBIT_VERSION"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$home" bash -s -- "$MOONBIT_VERSION"
+          echo "$home/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$home" >> "$GITHUB_ENV"
+
+      - name: Cross-build the full runtime for the Linux and macOS targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          moon version --all
+          moon update
+          moon run apps/zig-cross --target wasm -- build linux-x64 linux-arm64 darwin-arm64 darwin-x64 \
+            -- apps/zig-cross fixtures/consumer
+
   # The only check that branch protection needs. Add every new job to `needs`.
   # `if: always()` is required: without it this job is skipped when a needed job fails, and
   # GitHub counts a skipped required check as passed.
@@ -199,11 +237,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [lint, build, test, consumer, test-native-zig, test-scripts]
+    needs: [lint, build, test, consumer, cross-moonbit-0-10-18, test-native-zig, test-scripts]
     steps:
       - name: Require every selected job to succeed
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: |
-          jq -e 'keys == ["build", "consumer", "lint", "test", "test-native-zig", "test-scripts"]
+          jq -e 'keys == ["build", "consumer", "cross-moonbit-0-10-18", "lint", "test", "test-native-zig",
+            "test-scripts"]
             and all(.[]; .result == "success")' <<<"$NEEDS"

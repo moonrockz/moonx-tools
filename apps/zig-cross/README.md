@@ -92,17 +92,23 @@ ZIG_CROSS_RUNTIME=sync moonx moonrockz/zig-cross@<version> doctor darwin-arm64
 ZIG_CROSS_RUNTIME=sync moonx moonrockz/zig-cross@<version> build darwin-arm64 -- apps/myapp
 ```
 
-## MoonBit 0.10.17 compatibility
+## MoonBit 0.10.17 and later compatibility
 
-Assessed stock versions are MoonBit `0.10.17+d971670cd`, Moon `0.1.20261023`, Zig `0.17.0`, on Linux and macOS hosts. The previous `0.10.15+943464bfa` runtime also has an exact assessment. Runtime C contents are checked by SHA-256, using a manifest of `name:sha256` lines sorted in MoonBit String order, length then code units. Unknown versions or customized runtimes produce `ZC_TOOLCHAIN_UNVERIFIED`; they do not inherit a whitelist or an assertion of failure.
+Assessed stock versions are MoonBit `0.10.17+d971670cd` with Moon `0.1.20261023`, and MoonBit `0.10.18+6c83a7f62` with Moon `0.1.20261028`, each with Zig `0.17.0`, on Linux and macOS hosts. The previous `0.10.15+943464bfa` runtime also has an exact assessment. Runtime C contents are checked by SHA-256, using a manifest of `name:sha256` lines sorted in MoonBit String order, length then code units. Unknown versions or customized runtimes produce `ZC_TOOLCHAIN_UNVERIFIED`; they do not inherit a whitelist or an assertion of failure.
 
-The new Moon tool [detects cross-target compilers and avoids host-only objects](https://github.com/moonbitlang/moon/pull/2321), but also compiles every shipped runtime C file. The wrappers retain the older object filtering for 0.10.15 compatibility and `_CRT_RAND_S` for MinGW. Full runtime remains the default:
+The new Moon tool [detects cross-target compilers and avoids host-only objects](https://github.com/moonbitlang/moon/pull/2321), but also compiles every shipped runtime C file. The wrappers retain the older object filtering for 0.10.15 compatibility and `_CRT_RAND_S` for MinGW. Full runtime remains the default.
 
-- Linux targets, including `host` on Linux, receive `-include limits.h` for `dir.c`'s `NAME_MAX`. `ZC_LINUX_NAME_MAX` reports the active fix.
-- Darwin targets on macOS receive `-idirafter <SDK>/usr/include` when `xcrun --show-sdk-path` locates an SDK containing `sys/vnode.h`. `ZC_DARWIN_VNODE_HEADER` reports the selected flags. An SDK is required; `-isysroot` alone did not work. This remedy cannot provide SDK headers on Linux.
+### Header fix for the MoonBit runtime
+
+The runtime files [`dir.c`](https://github.com/moonbitlang/moonbit-native-runtime/blob/88e2a69ffff2f3faae07d2a94a9f7e54808cc2d1/dir.c) and [`fs.c`](https://github.com/moonbitlang/moonbit-native-runtime/blob/88e2a69ffff2f3faae07d2a94a9f7e54808cc2d1/fs.c), and the moonbitlang/async C stubs [`src/fs/dir.c`](https://github.com/moonbitlang/async/blob/v0.22.5/src/fs/dir.c) and [`src/internal/event_loop/fs.c`](https://github.com/moonbitlang/async/blob/v0.22.5/src/internal/event_loop/fs.c), do not compile with Zig's libc headers. The `cc` wrapper fixes this for the full runtime, without changes to the MoonBit files:
+
+- Linux targets, including `host` on Linux, receive `-include limits.h`, because `dir.c` uses `NAME_MAX` and does not include `limits.h`. `ZC_LINUX_NAME_MAX` reports the active fix.
+- Darwin targets, including `host` on macOS, receive `-idirafter <target-dir>/zig/<target>/include`. zig-cross writes a minimal `sys/vnode.h` there: `enum vtype` with the values of the macOS SDK (`VNON` = 0 to `VCPLX` = 10), which is all these files use from that header. Zig's macOS headers do not have `sys/vnode.h`. A real `sys/vnode.h` comes first on the include path. No macOS SDK is necessary, so Linux hosts can build darwin targets. `ZC_DARWIN_VNODE_HEADER` reports the active fix.
 - Windows full-runtime sources contain explicit MSVC-only checks and further MinGW incompatibilities. `ZC_WINDOWS_MSVC_RUNTIME` reports the blocker. Do not fake `_MSC_VER` or suppress compiler errors.
 
-Header fixes apply only to the exact assessed new runtime with Zig 0.17.0. Doctor reports what it detected and what the wrapper will select; it does not compile a probe project. Custom native compiler wrappers can apply the stated flags, but require their own validation.
+The wrapper adds the flags only when an argument matches `*/lib/runtime/*.c` (the toolchain runtime) or `*/moonbitlang/async/*.c`. Your own C stubs and other C dependencies compile without them. The fix applies to the full runtime of each toolchain except the old 0.10.15 pin, which does not need it. For an unassessed toolchain, `ZC_TOOLCHAIN_UNVERIFIED` reports the fix. Remove the fix when the MoonBit runtime and moonbitlang/async include `limits.h` and no longer include `sys/vnode.h`, or when Zig ships that header.
+
+Doctor reports what it detected and what the wrapper will select; it does not compile a probe project. `environment.darwin_sdk` stays in the JSON report for information; the wrapper does not use it.
 
 ### Explicit experimental synchronous runtime
 
@@ -110,7 +116,7 @@ Set `ZIG_CROSS_RUNTIME=sync` for consumers whose required runtime symbols fit th
 
 `runtime.c`, `env.c`, `sync_io.c`, `utf.c`, `backtrace.c`, `c_buffer.c`.
 
-The selection requires the exact new compiler/build-tool/Zig versions and stock runtime fingerprint. An unknown/custom runtime is refused before child execution. `ZIG_CROSS_RUNTIME=full`, or an unset variable, uses full runtime. Other values fail with `ZC_RUNTIME_MODE_INVALID`.
+The selection requires the exact 0.10.17 compiler/build-tool/Zig versions and stock runtime fingerprint; 0.10.18 has no sync assessment. An unknown/custom runtime is refused before child execution. `ZIG_CROSS_RUNTIME=full`, or an unset variable, uses full runtime. Other values fail with `ZC_RUNTIME_MODE_INVALID`.
 
 zig-cross copies these six files from the detected current installation into a temporary toolchain view, symlinks the matching compiler/core/headers and other libraries, and sets `MOON_TOOLCHAIN_ROOT` for the child. It cleans up the view after the child exits. It does not edit the global installation, change `MOON_HOME`, use old runtime sources or supply substitute stubs. Run build processes synchronously inside `exec`; background children cannot retain the temporary view after exec exits.
 

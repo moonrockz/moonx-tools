@@ -34,7 +34,7 @@ Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell
 `mise run lint` and `mise run validate` must pass before push. `mise run check` runs lint, validate, test, build (what CI runs). `mise run format` before committing MoonBit code. Commits use Conventional Commits, no AI attribution.
 
 - `mise run test:native-zig` runs native tests with zig (`exec host`).
-- `mise run test:consumer` cross-builds `fixtures/consumer` and runs `exec host`.
+- `mise run test:consumer` cross-builds `fixtures/consumer`, runs `exec host`, and cross-builds `apps/zig-cross` with the full runtime for the Linux and macOS targets.
 - `mise run test:pubman` packs one library fixture and verifies installed Node/Chromium/TypeScript consumers, previews, and fake registries.
 - `mise run test:scripts` runs script tests (`scripts/features/*.feature` via moonspec).
 

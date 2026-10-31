@@ -65,7 +65,7 @@ pub fn zig_triple(target : Target) -> String? {
 ///
 /// The `cc` wrapper for `MOON_CC`: a /bin/sh script that runs `zig cc`.
 ///
-/// A cross build needs two workarounds for upstream bugs in moon and in the MoonBit runtime:
+/// A cross build needs three workarounds for upstream bugs in moon and in the MoonBit runtime:
 ///
 /// 1. The runtime file `env.c` includes <stdlib.h> before it defines `_CRT_RAND_S`. On Windows
 ///    (mingw), `rand_s` is then not declared and the compile fails. A `-D_CRT_RAND_S` on the
@@ -76,16 +76,22 @@ pub fn zig_triple(target : Target) -> String? {
 ///    not for `MOON_CC`'s target, so the link fails or the binary gets the wrong architecture.
 ///    A cross wrapper removes the flag and the three files. The `Host` wrapper removes nothing.
 ///    Upstream: https://github.com/moonbitlang/moon/issues/2320
-pub fn cc_wrapper(target : Target) -> String {
+/// 3. `header_fix` holds the flags of the MoonBit header fix (see `header_flags` and
+///    `headers.mbt`). The wrapper adds them only when an argument is a MoonBit runtime or
+///    moonbitlang/async C source, so other C code compiles as before.
+pub fn cc_wrapper(target : Target, header_fix~ : Array[String] = []) -> String {
+  let fix = header_fix_line(header_fix)
   match zig_triple(target) {
     None =>
       "#!/bin/sh\n" +
       "case \"$(uname -s)\" in Linux) unwind=-lunwind;; *) unwind=;; esac\n" +
       "for a in \"$@\"; do case \"$a\" in -c) unwind=;; esac; done\n" +
+      fix +
       "exec zig cc -D_CRT_RAND_S \"$@\" $unwind\n"
     Some(triple) =>
       "#!/bin/sh\n" +
       "for a in \"$@\"; do shift; case \"$a\" in -DMOONBIT_USE_SIMDUTF|*/moonbit_simdutf.o|*/simdutf.o|*/libbacktrace.a) ;; *) set -- \"$@\" \"$a\";; esac; done\n" +
+      fix +
       "exec zig cc -target \{triple} -D_CRT_RAND_S \"$@\"\n"
   }
 }

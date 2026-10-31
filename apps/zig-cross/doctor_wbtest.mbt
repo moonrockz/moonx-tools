@@ -54,12 +54,97 @@ test "known full runtime findings match actual header selection" {
     "ZC_LINUX_NAME_MAX", "ZC_DARWIN_VNODE_HEADER", "ZC_WINDOWS_MSVC_RUNTIME", "ZC_WINDOWS_OSSTRING",
   ])
   assert_eq(result.findings[0].severity, "warning")
-  assert_eq(result.findings[1].severity, "error")
-  assert_eq(header_flags(LinuxX64, env), "-include limits.h")
-  assert_eq(header_flags(DarwinArm64, env), "")
-  let mac = { ..env, host_os: Some("Darwin"), darwin_sdk: Some("/SDK's path"), }
-  assert_true(header_flags(Host, mac).contains("-idirafter"))
+  assert_eq(result.findings[1].severity, "warning")
+  assert_eq(result.findings[2].severity, "error")
+  assert_true(result.findings[0].message.contains("-include limits.h"))
+  assert_true(
+    result.findings[1].message.contains(
+      "-idirafter <target-dir>/zig/darwin-arm64/include",
+    ),
+  )
+  assert_eq(header_flags(LinuxX64, env, "/w"), ["-include", "limits.h"])
+  assert_eq(header_flags(DarwinArm64, env, "/w"), ["-idirafter", "/w/include"])
+  assert_eq(header_flags(DarwinX64, env, "/w"), ["-idirafter", "/w/include"])
+  assert_eq(header_flags(WindowsX64, env, "/w"), [])
+  assert_eq(header_flags(Host, env, "/w"), ["-include", "limits.h"])
+  let mac = { ..env, host_os: Some("Darwin"), darwin_sdk: None, }
+  assert_eq(header_flags(Host, mac, "/w"), ["-idirafter", "/w/include"])
   assert_eq(report(mac, [Host]).status, "warning")
+}
+
+///|
+test "darwin targets get the vnode shim on a Linux host without an SDK" {
+  let env = stock_environment("full")
+  let result = report(env, [DarwinArm64, DarwinX64])
+  assert_eq(result.status, "warning")
+  assert_eq(result.findings.map(f => f.code), [
+    "ZC_DARWIN_VNODE_HEADER", "ZC_DARWIN_VNODE_HEADER",
+  ])
+  assert_true(result.findings[0].message.contains("Linux host"))
+  assert_true(
+    result.findings[0].evidence.any(e => e.contains("moonbit-native-runtime")),
+  )
+}
+
+///|
+test "MoonBit 0.10.18 has a full-runtime assessment but not a sync one" {
+  let env = {
+    ..stock_environment("full"),
+    compiler: Some("0.10.18+6c83a7f62"),
+    moon: Some("0.1.20261028"),
+    runtime_fingerprint: Some(
+      "2f3e28288883bc669aacf961b6e0a04eede59f5ca09d7c838cf70e3651fc5e7f",
+    ),
+  }
+  let result = report(env, [LinuxX64, DarwinArm64])
+  assert_eq(result.status, "warning")
+  assert_eq(result.findings.map(f => f.code), [
+    "ZC_LINUX_NAME_MAX", "ZC_DARWIN_VNODE_HEADER",
+  ])
+  assert_true(result.findings[0].applicability.contains("0.10.18+6c83a7f62"))
+  assert_false(sync_eligible(env))
+  let sync = report({ ..env, runtime_mode: "sync", }, [LinuxX64])
+  assert_true(sync.findings.any(f => f.code == "ZC_SYNC_UNAVAILABLE"))
+}
+
+///|
+test "an unassessed full runtime gets the header fix and a notice" {
+  let env = {
+    ..stock_environment("full"),
+    compiler: Some("0.10.99+future"),
+    runtime_fingerprint: Some("custom"),
+  }
+  assert_eq(header_flags(LinuxArm64, env, "/w"), ["-include", "limits.h"])
+  let result = report(env, [LinuxArm64, DarwinX64, WindowsX64])
+  assert_eq(result.status, "warning")
+  guard result.findings.search_by(f => f.code == "ZC_TOOLCHAIN_UNVERIFIED")
+    is Some(index) else {
+    abort("unverified finding")
+  }
+  let message = result.findings[index].message
+  assert_true(message.contains("linux-arm64, darwin-x64:"))
+  assert_false(message.contains("windows-x64:"))
+  assert_false(result.findings.any(f => f.code == "ZC_LINUX_NAME_MAX"))
+}
+
+///|
+test "the old pin, sync mode and Windows get no header fix" {
+  let env = stock_environment("full")
+  let old = {
+    ..env,
+    compiler: Some("0.10.15+943464bfa"),
+    moon: Some("0.1.20261012"),
+    runtime_fingerprint: Some(
+      "0c0a95f4fa7e59715b57ec30962c34f642a5caff0b28535c5933278c691fd23c",
+    ),
+  }
+  assert_eq(header_flags(LinuxX64, old, "/w"), [])
+  assert_eq(header_flags(LinuxX64, stock_environment("sync"), "/w"), [])
+  assert_eq(header_flags(WindowsX64, env, "/w"), [])
+  assert_eq(
+    header_flags(LinuxX64, { ..env, host_os: Some("FreeBSD"), }, "/w"),
+    [],
+  )
 }
 
 ///|
@@ -72,7 +157,7 @@ test "explicit sync mode suppresses full runtime defects but retains Windows war
   ])
   assert_true(result.findings[0].message.contains("thread pools"))
   assert_true(execution_allowed(env))
-  assert_eq(header_flags(LinuxX64, env), "")
+  assert_eq(header_flags(LinuxX64, env, "/w"), [])
   assert_false(
     report(stock_environment("full"), [LinuxX64]).findings.any(f => {
       f.code == "ZC_COMPATIBILITY_MODE"
