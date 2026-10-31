@@ -9,7 +9,7 @@
 # Node.js runs the js target in `moon test --target js` and `moon run --target js`.
 node = "24.14.1"
 "npm:typescript" = "5.9.3"
-"npm:playwright" = "1.58.2"
+"npm:playwright" = "1.64.1"
 
 # Spec-driven change planning and agent workflow skills
 "npm:@fission-ai/openspec" = "1.14.3"

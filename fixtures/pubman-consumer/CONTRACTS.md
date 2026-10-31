@@ -22,7 +22,7 @@ Measured with MoonBit `0.10.15+943464bfa`, moon `0.1.20261012` commit `748b63c`.
 - Wasm-GC with `use-js-builtin-string: true` accepts JS strings when
   instantiation passes `builtins: ["js-string"]` and
   `importedStringConstants: "_"`. Concrete Unicode calls pass on pinned Node
-  24.14.1 and Playwright 1.58.2 Chromium revision 1208.
+  24.14.1 and Playwright 1.64.1 Chromium revision 1248.
 - The pinned `moon package` rejects nonzero major versions. Pubman preserves
   semver identity and reports that compiler/package validation failure rather
   than rewriting an author version.
