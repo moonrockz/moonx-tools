@@ -8,4 +8,4 @@
 
 - [x] 2.1 Run `mise run format`, `mise run lint`, `mise run validate` and `mise run check`
 - [x] 2.2 Run `mise run test:native-zig` and `mise run test:consumer`
-- [ ] 2.3 CI `Test native (zig)` on Linux passes (glibc host with moonbitlang/async 0.22.7)
+- [x] 2.3 CI `Test native (zig)` on Linux passes (glibc host with moonbitlang/async 0.22.7)
