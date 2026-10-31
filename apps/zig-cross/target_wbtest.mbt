@@ -157,3 +157,103 @@ async test "host cc wrapper adds -lunwind only for Linux link steps" {
     "cc -D_CRT_RAND_S a.o -o out\n",
   )
 }
+
+///|
+test "cc_wrapper without a header fix has no header fix line" {
+  assert_false(cc_wrapper(LinuxX64).contains("lib/runtime"))
+  assert_eq(cc_wrapper(LinuxX64, header_fix=[]), cc_wrapper(LinuxX64))
+}
+
+///|
+#cfg(target="native")
+async test "cc_wrapper adds the header fix only to MoonBit C sources" {
+  let dir = "_build/zig-cross-test"
+  @fs.mkdir(dir, recursive=true, allow_exist=true)
+  let linux = cc_wrapper(LinuxX64, header_fix=["-include", "limits.h"])
+  assert_eq(
+    run_wrapper(dir + "/cc-fix", linux, [
+      "-c", "/moon/lib/runtime/dir.c", "-DMOONBIT_USE_SIMDUTF", "-o", "dir.o",
+    ]),
+    "cc -target x86_64-linux-musl -D_CRT_RAND_S -include limits.h -c /moon/lib/runtime/dir.c -o dir.o\n",
+  )
+  assert_eq(
+    run_wrapper(dir + "/cc-fix", linux, [
+      "-c", "/p/.mooncakes/moonbitlang/async/src/fs/dir.c", "-o", "dir.o",
+    ]),
+    "cc -target x86_64-linux-musl -D_CRT_RAND_S -include limits.h -c /p/.mooncakes/moonbitlang/async/src/fs/dir.c -o dir.o\n",
+  )
+  assert_eq(
+    run_wrapper(dir + "/cc-fix", linux, ["-c", "src/stub.c", "-o", "stub.o"]),
+    "cc -target x86_64-linux-musl -D_CRT_RAND_S -c src/stub.c -o stub.o\n",
+  )
+  let darwin = cc_wrapper(DarwinArm64, header_fix=[
+    "-idirafter", "/w d/it's/include",
+  ])
+  assert_eq(
+    run_wrapper(dir + "/cc-fix", darwin, [
+      "-c", "/moon/lib/runtime/fs.c", "-o", "fs.o",
+    ]),
+    "cc -target aarch64-macos -D_CRT_RAND_S -idirafter /w d/it's/include -c /moon/lib/runtime/fs.c -o fs.o\n",
+  )
+}
+
+///|
+#cfg(target="native")
+async test "host cc wrapper adds the header fix to MoonBit C sources" {
+  let dir = "_build/zig-cross-test"
+  @fs.mkdir(dir, recursive=true, allow_exist=true)
+  let host = cc_wrapper(Host, header_fix=["-include", "limits.h"]).replace(
+    old="$(uname -s)",
+    new="Darwin",
+  )
+  assert_eq(
+    run_wrapper(dir + "/cc-host-fix", host, [
+      "-c", "/moon/lib/runtime/dir.c", "-o", "dir.o",
+    ]),
+    "cc -D_CRT_RAND_S -include limits.h -c /moon/lib/runtime/dir.c -o dir.o\n",
+  )
+  assert_eq(
+    run_wrapper(dir + "/cc-host-fix", host, ["a.o", "-o", "out"]),
+    "cc -D_CRT_RAND_S a.o -o out\n",
+  )
+}
+
+///|
+#cfg(target="native")
+async test "the vnode shim compiles for macOS targets with the SDK values" {
+  @fs.mkdir(
+    "_build/zig-cross-test/shim/include/sys",
+    recursive=true,
+    allow_exist=true,
+  )
+  let dir = @fs.realpath("_build/zig-cross-test/shim")
+  @fs.write_file(dir + "/include/sys/vnode.h", vnode_shim)
+  @fs.write_file(
+    dir + "/probe.c",
+    (
+      #|#include <stdio.h>
+      #|#include <sys/attr.h>
+      #|#include <sys/vnode.h>
+      #|_Static_assert(VNON == 0 && VREG == 1 && VDIR == 2 && VBLK == 3, "vtype");
+      #|_Static_assert(VCHR == 4 && VLNK == 5 && VSOCK == 6 && VFIFO == 7, "vtype");
+      #|_Static_assert(VBAD == 8 && VSTR == 9 && VCPLX == 10, "vtype");
+      #|_Static_assert(sizeof(fsobj_type_t) == 4, "fsobj_type_t");
+      #|int kind(fsobj_type_t t) { switch (t) { case VDIR: return 1; default: return 0; } }
+      #|
+    ),
+  )
+  for triple in ["aarch64-macos", "x86_64-macos"] {
+    let out = @shell.Cmd("zig", [
+      "cc",
+      "-target",
+      triple,
+      "-c",
+      "-o",
+      dir + "/" + triple + ".o",
+      "-idirafter",
+      dir + "/include",
+      dir + "/probe.c",
+    ]).output()
+    assert_eq(out.exit_code(), 0, msg=out.stderr())
+  }
+}

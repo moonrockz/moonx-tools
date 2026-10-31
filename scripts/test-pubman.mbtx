@@ -372,7 +372,8 @@ async fn gate_contract(root : String) -> Unit {
     let needs : Map[String, Json] = Map([])
     for
       key in [
-        "build", "consumer", "lint", "test", "test-native-zig", "test-scripts",
+        "build", "consumer", "cross-moonbit-0-10-18", "lint", "test", "test-native-zig",
+        "test-scripts",
       ] {
       if key == "consumer" && state == "missing" {
         continue

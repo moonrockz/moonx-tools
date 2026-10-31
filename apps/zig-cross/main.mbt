@@ -40,16 +40,12 @@ async fn prepare(
   @fs.mkdir(dir, recursive=true, allow_exist=true)
   let cc = join(dir, "cc")
   let ar = join(dir, "ar")
-  let flags = header_flags(target, detected)
-  let wrapper = if flags.is_empty() {
-    cc_wrapper(target)
-  } else {
-    cc_wrapper(target).replace(
-      old="exec zig cc ",
-      new="exec zig cc " + flags + " ",
-    )
+  let flags = header_flags(target, detected, dir)
+  if flags.contains("-idirafter") {
+    @fs.mkdir(join(dir, "include/sys"), recursive=true, allow_exist=true)
+    @fs.write_file(join(dir, "include/sys/vnode.h"), vnode_shim)
   }
-  write_script(cc, wrapper)
+  write_script(cc, cc_wrapper(target, header_fix=flags))
   write_script(ar, ar_wrapper(target))
   { "MOON_CC": cc, "MOON_AR": ar }
 }

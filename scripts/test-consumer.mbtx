@@ -17,6 +17,8 @@ import {
 ///    real cross-built output. `zig-cross` itself fails on a wrong header.
 /// 2. `zig-cross exec host` runs the native tests with zig as the C compiler.
 /// 3. A host-compatible binary is built and executed.
+/// 4. The full runtime cross-builds `apps/zig-cross` for the Linux and macOS targets, on Linux and
+///    macOS hosts, without a macOS SDK.
 ///
 /// Usage: `mise run test:consumer`, or `moonx scripts/test-consumer.mbtx`.
 /// The script exits with a non-zero code on failure.
@@ -133,6 +135,16 @@ async fn main {
         "no host .exe under _build/native/release/build/moonrockz/consumer after the native build",
       )
   }
+  // 5. Full runtime for the Linux and macOS targets. zig-cross itself uses moonbitlang/async/fs, so
+  //    the build compiles the runtime dir.c and fs.c and the async C stubs with the header fix.
+  run_step(
+    "Linux and macOS targets with the full runtime and moonbitlang/async",
+    "moon",
+    [
+      "run", "apps/zig-cross", "--target", "wasm", "--", "build", "--target-dir", "_build/cross-full",
+      "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "--", "apps/zig-cross",
+    ],
+  )
   run_step("Doctor and isolated runtime contracts", "mise", [
     "run", "test:doctor",
   ])

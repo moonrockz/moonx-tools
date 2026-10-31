@@ -48,6 +48,16 @@ let assessed_compiler = "0.10.17+d971670cd"
 let stock_runtime_fingerprint = "067e9fd5378d52fea64a265b4a4f5b2e79a8f47c91e5fb987a20a0ce8530a6c7"
 
 ///|
+/// Stock toolchains with an assessment of the full runtime: compiler, Moon and runtime SHA-256.
+/// Only the first one is also assessed for the sync runtime (`sync_eligible`).
+let assessed_toolchains : Array[(String, String, String)] = [
+  (assessed_compiler, "0.1.20261023", stock_runtime_fingerprint),
+  (
+    "0.10.18+6c83a7f62", "0.1.20261028", "2f3e28288883bc669aacf961b6e0a04eede59f5ca09d7c838cf70e3651fc5e7f",
+  ),
+]
+
+///|
 fn requested_mode() -> String {
   @env.get_env_var("ZIG_CROSS_RUNTIME").unwrap_or("full")
 }
@@ -162,13 +172,41 @@ async fn detect_environment() -> Environment {
 }
 
 ///|
-fn sync_eligible(env : Environment) -> Bool {
+fn assessed_toolchain(env : Environment, index : Int32) -> Bool {
+  let (compiler, moon, fingerprint) = assessed_toolchains[index]
   env.toolchain_overrides.is_empty() &&
-  env.compiler == Some(assessed_compiler) &&
-  env.moon == Some("0.1.20261023") &&
+  env.compiler == Some(compiler) &&
+  env.moon == Some(moon) &&
   env.zig == Some("0.17.0") &&
-  env.runtime_fingerprint == Some(stock_runtime_fingerprint) &&
+  env.runtime_fingerprint == Some(fingerprint) &&
   (env.host_os == Some("Linux") || env.host_os == Some("Darwin"))
+}
+
+///|
+fn sync_eligible(env : Environment) -> Bool {
+  assessed_toolchain(env, 0)
+}
+
+///|
+/// The stock full runtime matches an assessment, so doctor knows its header defects.
+fn full_runtime_assessed(env : Environment) -> Bool {
+  for index in 0..<assessed_toolchains.length() {
+    if assessed_toolchain(env, index) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// The previous pin. Its runtime does not compile `dir.c` or `fs.c` and needs no header fix.
+fn old_toolchain(env : Environment) -> Bool {
+  env.toolchain_overrides.is_empty() &&
+  env.compiler == Some("0.10.15+943464bfa") &&
+  env.moon == Some("0.1.20261012") &&
+  env.zig == Some("0.17.0") &&
+  env.runtime_fingerprint ==
+  Some("0c0a95f4fa7e59715b57ec30962c34f642a5caff0b28535c5933278c691fd23c")
 }
 
 ///|
@@ -267,19 +305,20 @@ fn report(
       )
     }
     let eligible = sync_eligible(env)
-    let old = env.toolchain_overrides.is_empty() &&
-      env.compiler == Some("0.10.15+943464bfa") &&
-      env.moon == Some("0.1.20261012") &&
-      env.zig == Some("0.17.0") &&
-      env.runtime_fingerprint ==
-      Some("0c0a95f4fa7e59715b57ec30962c34f642a5caff0b28535c5933278c691fd23c")
-    if !eligible && !old {
+    let assessed = full_runtime_assessed(env)
+    if !assessed && !old_toolchain(env) {
+      let fixed = targets.filter(t => !header_flags(t, env, "").is_empty())
+      let message = if fixed.is_empty() {
+        "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified."
+      } else {
+        "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified. The wrapper still applies its MoonBit header fix for \{fixed.map(t => t.name()).join(", ")}: limits.h on Linux and a sys/vnode.h shim on macOS, to MoonBit runtime and moonbitlang/async C sources only."
+      }
       findings.push(
         finding(
           "ZC_TOOLCHAIN_UNVERIFIED",
           "unverified",
           names,
-          "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified.",
+          message,
           "no exact stock-toolchain assessment",
           [],
           [
@@ -325,7 +364,7 @@ fn report(
           ),
         )
       }
-    } else if eligible {
+    } else if assessed {
       for target in targets {
         let os = if target == Host {
           env.host_os.unwrap_or("")
@@ -334,18 +373,22 @@ fn report(
         }
         let (code, message) = if os.has_prefix("linux") || os == "Linux" {
           (
-            "ZC_LINUX_NAME_MAX", "The full runtime dir.c uses NAME_MAX without limits.h with Zig. Header injection fixes this observed Linux compilation failure.",
+            "ZC_LINUX_NAME_MAX", "The full runtime dir.c and the moonbitlang/async C stubs use NAME_MAX but do not include limits.h, so they do not compile with Zig's musl headers. The wrapper adds -include limits.h to MoonBit runtime and moonbitlang/async C sources only.",
           )
         } else if os.has_prefix("darwin") || os == "Darwin" {
           (
-            "ZC_DARWIN_VNODE_HEADER", "The full runtime requires sys/vnode.h, absent from Zig headers. SDK headers via -idirafter are needed; -isysroot alone is insufficient. This is not a Linux-host remedy.",
+            "ZC_DARWIN_VNODE_HEADER", "The full runtime dir.c and fs.c and the moonbitlang/async C stubs include sys/vnode.h, which Zig's macOS headers do not have. The wrapper writes a minimal sys/vnode.h shim (enum vtype with the macOS values) and adds it with -idirafter to MoonBit runtime and moonbitlang/async C sources only. A real sys/vnode.h comes first. No macOS SDK is necessary, so this also works on a Linux host.",
           )
         } else {
           (
             "ZC_WINDOWS_MSVC_RUNTIME", "The full runtime contains MSVC-only Windows sources and additional MinGW incompatibilities. Compiler flags alone do not fix it.",
           )
         }
-        let header_fix = header_flags(target, env)
+        let header_fix = header_flags(
+          target,
+          env,
+          "<target-dir>/zig/" + target.name(),
+        ).join(" ")
         let active = !header_fix.is_empty()
         findings.push(
           finding(
@@ -361,9 +404,10 @@ fn report(
             } else {
               message
             },
-            "fingerprinted stock 0.10.17 full runtime with Zig 0.17.0; assessed compilation, not reproduced by doctor",
+            "fingerprinted stock \{env.compiler.unwrap_or("")} full runtime with Zig 0.17.0; assessed compilation, not reproduced by doctor",
             [
               "https://github.com/moonbitlang/moon/blob/3778465a252d2838357dddf25dc0ebf3ff3ba40f/crates/moonutil/src/toolchain.rs#L62",
+              ..runtime_header_evidence,
             ],
             if active {
               [
@@ -383,7 +427,7 @@ fn report(
                   "Replace <package-path>; no excluded runtime APIs.",
                 ),
                 instruction(
-                  "For full runtime APIs, use the target OS and a supported native compiler. Linux custom wrappers can add -include limits.h; macOS custom wrappers require an installed SDK and -idirafter <SDK>/usr/include. Validate your own build.",
+                  "For full runtime APIs, use the target OS and a supported native compiler. Validate your own build.",
                 ),
               ]
             },
@@ -453,23 +497,33 @@ fn shell_quote(value : String) -> String {
 }
 
 ///|
-fn header_flags(target : Target, env : Environment) -> String {
-  if env.runtime_mode != "full" || !sync_eligible(env) {
-    return ""
+/// The compiler flags of the MoonBit header fix for `target`, or none. The `cc` wrapper adds them
+/// only to MoonBit runtime and moonbitlang/async C sources (`moonbit_source_patterns`).
+/// `wrapper_dir` is the directory of the wrapper; the macOS shim is in its `include` directory.
+///
+/// The fix applies to the full runtime of every toolchain except the old 0.10.15 pin, which does not
+/// need it. An unassessed toolchain that has the defects then builds, and one without them is not
+/// changed: limits.h is a standard header, and a real sys/vnode.h comes before the shim.
+fn header_flags(
+  target : Target,
+  env : Environment,
+  wrapper_dir : String,
+) -> Array[String] {
+  if env.runtime_mode != "full" ||
+    old_toolchain(env) ||
+    (env.host_os != Some("Linux") && env.host_os != Some("Darwin")) {
+    return []
   }
   if target == LinuxX64 ||
     target == LinuxArm64 ||
     (target == Host && env.host_os == Some("Linux")) {
-    "-include limits.h"
+    ["-include", "limits.h"]
   } else if target == DarwinArm64 ||
     target == DarwinX64 ||
     (target == Host && env.host_os == Some("Darwin")) {
-    match env.darwin_sdk {
-      Some(sdk) => "-idirafter " + shell_quote(sdk + "/usr/include")
-      None => ""
-    }
+    ["-idirafter", wrapper_dir + "/include"]
   } else {
-    ""
+    []
   }
 }
 
