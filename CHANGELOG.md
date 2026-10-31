@@ -6,6 +6,24 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.3.2] - 2026-10-31
+
+Cross-build the MoonBit 0.10.17+ full runtime with zig for Linux and macOS targets, including MoonBit `0.10.18+6c83a7f62`. The `cc` wrapper adds `-include limits.h` for Linux targets and a minimal `sys/vnode.h` shim for darwin targets, only to MoonBit runtime and `moonbitlang/async` C sources. A Linux host can now build darwin targets without a macOS SDK. `zig-cross doctor` assesses MoonBit 0.10.18 and reports the `ZC_LINUX_NAME_MAX` and `ZC_DARWIN_VNODE_HEADER` warnings. CI uses Playwright 1.64.1 so that the pubman consumer checks run on Ubuntu 26.04 runners.
+
+### 🐛 Bug fixes
+
+- *(zig-cross)* Compile the MoonBit 0.10.17+ full runtime for Linux and macOS ([#13](https://github.com/moonrockz/moonx-tools/pull/13)) by @DamianReeves
+
+### 📚 Documentation
+
+- Archive completed pubman specs ([#12](https://github.com/moonrockz/moonx-tools/pull/12)) by @DamianReeves
+
+### 🏗️ Build and CI
+
+- Upgrade Playwright to 1.64.1 for Ubuntu 26.04 runners ([#14](https://github.com/moonrockz/moonx-tools/pull/14)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.3.1...v0.3.2
+
 ## [0.3.1] - 2026-10-26
 
 Fix `zig-cross doctor` guidance for unverified toolchains. The `ZC_TOOLCHAIN_UNVERIFIED` next step now builds the assessed targets from `<package-path>` instead of always naming `linux-x64` and this repository's `fixtures/consumer`. Replace the placeholder with your package path and use the full runtime as the prerequisites explain. The README also documents finding severities and their report-status mapping.

@@ -1,6 +1,6 @@
 name = "moonx-tools-monorepo"
 
-version = "0.3.1"
+version = "0.3.2"
 
 description = "Command-line tools for MoonBit, runnable with moonx"
 
