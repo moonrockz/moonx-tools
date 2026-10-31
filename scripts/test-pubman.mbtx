@@ -1,8 +1,8 @@
 ----
 import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/base64",
@@ -372,7 +372,7 @@ async fn gate_contract(root : String) -> Unit {
     let needs : Map[String, Json] = Map([])
     for
       key in [
-        "build", "consumer", "cross-moonbit-0-10-18", "lint", "test", "test-native-zig",
+        "build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
         "test-scripts",
       ] {
       if key == "consumer" && state == "missing" {

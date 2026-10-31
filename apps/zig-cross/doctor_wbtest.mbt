@@ -56,17 +56,17 @@ test "known full runtime findings match actual header selection" {
   assert_eq(result.findings[0].severity, "warning")
   assert_eq(result.findings[1].severity, "warning")
   assert_eq(result.findings[2].severity, "error")
-  assert_true(result.findings[0].message.contains("-include limits.h"))
+  assert_true(result.findings[0].message.contains("-DNAME_MAX=255"))
   assert_true(
     result.findings[1].message.contains(
       "-idirafter <target-dir>/zig/darwin-arm64/include",
     ),
   )
-  assert_eq(header_flags(LinuxX64, env, "/w"), ["-include", "limits.h"])
+  assert_eq(header_flags(LinuxX64, env, "/w"), ["-DNAME_MAX=255"])
   assert_eq(header_flags(DarwinArm64, env, "/w"), ["-idirafter", "/w/include"])
   assert_eq(header_flags(DarwinX64, env, "/w"), ["-idirafter", "/w/include"])
   assert_eq(header_flags(WindowsX64, env, "/w"), [])
-  assert_eq(header_flags(Host, env, "/w"), ["-include", "limits.h"])
+  assert_eq(header_flags(Host, env, "/w"), ["-DNAME_MAX=255"])
   let mac = { ..env, host_os: Some("Darwin"), darwin_sdk: None, }
   assert_eq(header_flags(Host, mac, "/w"), ["-idirafter", "/w/include"])
   assert_eq(report(mac, [Host]).status, "warning")
@@ -114,7 +114,7 @@ test "an unassessed full runtime gets the header fix and a notice" {
     compiler: Some("0.10.99+future"),
     runtime_fingerprint: Some("custom"),
   }
-  assert_eq(header_flags(LinuxArm64, env, "/w"), ["-include", "limits.h"])
+  assert_eq(header_flags(LinuxArm64, env, "/w"), ["-DNAME_MAX=255"])
   let result = report(env, [LinuxArm64, DarwinX64, WindowsX64])
   assert_eq(result.status, "warning")
   guard result.findings.search_by(f => f.code == "ZC_TOOLCHAIN_UNVERIFIED")
