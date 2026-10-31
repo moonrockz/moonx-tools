@@ -1,9 +1,9 @@
 ----
 import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/process",
-  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/process",
+  "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
@@ -19,6 +19,9 @@ import {
 /// 3. A host-compatible binary is built and executed.
 /// 4. The full runtime cross-builds `apps/zig-cross` for the Linux and macOS targets, on Linux and
 ///    macOS hosts, without a macOS SDK.
+/// 5. `test:doctor` checks the doctor and runtime contracts. It also runs the sync runtime
+///    contracts, all five target headers included, when `ZIG_CROSS_SYNC_MOON_HOME` names the
+///    assessed MoonBit 0.10.17 home.
 ///
 /// Usage: `mise run test:consumer`, or `moonx scripts/test-consumer.mbtx`.
 /// The script exits with a non-zero code on failure.
@@ -148,14 +151,5 @@ async fn main {
   run_step("Doctor and isolated runtime contracts", "mise", [
     "run", "test:doctor",
   ])
-  run_step(
-    "All five target headers with the explicit sync runtime",
-    "moon",
-    [
-      "run", "apps/zig-cross", "--target", "wasm", "--", "build", "linux-x64", "linux-arm64",
-      "darwin-arm64", "darwin-x64", "windows-x64", "--", consumer,
-    ],
-    extra_env={ "ZIG_CROSS_RUNTIME": "sync" },
-  )
   println("✅ Consumer fixture passed")
 }
