@@ -136,8 +136,8 @@ Never remove a lock while another command is active.
 
 Install `moon`, Node/npm, `tsc`, `playwright`, Chromium, `unzip`, `zip` and `tar`
 before using the complete lifecycle. Repository mise pins Node 24.14.1, npm
-11.11.0 through Node, TypeScript 5.9.3 and Playwright 1.58.2, with Chromium
-145.0.7632.6 revision 1208. Install Chromium explicitly:
+11.11.0 through Node, TypeScript 5.9.3 and Playwright 1.64.1, with Chromium
+156.0.8078.4 revision 1248. Install Chromium explicitly:
 
 ```sh
 mise install
