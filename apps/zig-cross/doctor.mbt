@@ -311,7 +311,7 @@ fn report(
       let message = if fixed.is_empty() {
         "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified."
       } else {
-        "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified. The wrapper still applies its MoonBit header fix for \{fixed.map(t => t.name()).join(", ")}: limits.h on Linux and a sys/vnode.h shim on macOS, to MoonBit runtime and moonbitlang/async C sources only."
+        "This version, host, or runtime fingerprint has not been assessed. Compatibility is unverified. The wrapper still applies its MoonBit header fix for \{fixed.map(t => t.name()).join(", ")}: -DNAME_MAX=255 on Linux and a sys/vnode.h shim on macOS, to MoonBit runtime and moonbitlang/async C sources only."
       }
       findings.push(
         finding(
@@ -373,7 +373,7 @@ fn report(
         }
         let (code, message) = if os.has_prefix("linux") || os == "Linux" {
           (
-            "ZC_LINUX_NAME_MAX", "The full runtime dir.c and the moonbitlang/async C stubs use NAME_MAX but do not include limits.h, so they do not compile with Zig's musl headers. The wrapper adds -include limits.h to MoonBit runtime and moonbitlang/async C sources only.",
+            "ZC_LINUX_NAME_MAX", "The full runtime dir.c and the moonbitlang/async C stubs use NAME_MAX but do not include limits.h, so they do not compile with Zig's musl headers. The wrapper adds -DNAME_MAX=255 (the Linux value) to MoonBit runtime and moonbitlang/async C sources only. It does not force an include of limits.h, because that comes before the feature-test macros of the source (_GNU_SOURCE in moonbitlang/async fs.c) and removes glibc declarations such as O_PATH.",
           )
         } else if os.has_prefix("darwin") || os == "Darwin" {
           (
@@ -503,7 +503,8 @@ fn shell_quote(value : String) -> String {
 ///
 /// The fix applies to the full runtime of every toolchain except the old 0.10.15 pin, which does not
 /// need it. An unassessed toolchain that has the defects then builds, and one without them is not
-/// changed: limits.h is a standard header, and a real sys/vnode.h comes before the shim.
+/// changed: -DNAME_MAX=255 is the Linux value, token-identical to the limits.h definition of glibc
+/// and musl, and a real sys/vnode.h comes before the shim.
 fn header_flags(
   target : Target,
   env : Environment,
@@ -517,7 +518,7 @@ fn header_flags(
   if target == LinuxX64 ||
     target == LinuxArm64 ||
     (target == Host && env.host_os == Some("Linux")) {
-    ["-include", "limits.h"]
+    ["-DNAME_MAX=255"]
   } else if target == DarwinArm64 ||
     target == DarwinX64 ||
     (target == Host && env.host_os == Some("Darwin")) {

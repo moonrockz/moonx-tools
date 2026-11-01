@@ -15,6 +15,6 @@ preferred_target = "wasm"
 description = "Cross-compile MoonBit native binaries with zig"
 
 import {
-  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.7",
   "moonbitlang/x@0.5.5",
 }

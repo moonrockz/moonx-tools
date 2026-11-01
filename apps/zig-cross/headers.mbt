@@ -3,7 +3,10 @@
 /// the moonbitlang/async C stubs do not compile with Zig's libc headers:
 ///
 /// - `dir.c` uses `NAME_MAX` but does not include <limits.h>. glibc gets it through other headers;
-///   Zig's musl headers do not. The wrapper adds `-include limits.h` on Linux.
+///   Zig's musl headers do not. The wrapper adds `-DNAME_MAX=255` (the Linux value) on Linux. A
+///   forced `-include limits.h` is wrong: it reads <features.h> before the first line of the source,
+///   so a `#define _GNU_SOURCE` there (moonbitlang/async 0.22.7 `fs.c`) has no effect, and glibc
+///   then does not declare `O_PATH`.
 /// - `dir.c` and `fs.c` include <sys/vnode.h> for `enum vtype`. Zig's macOS headers do not have
 ///   that file, and on a Linux host there is no macOS SDK. The wrapper writes `vnode_shim` to
 ///   `<wrapper-dir>/include/sys/vnode.h` and adds `-idirafter <wrapper-dir>/include` on macOS.
@@ -14,6 +17,7 @@ let runtime_header_evidence : Array[String] = [
   "https://github.com/moonbitlang/moonbit-native-runtime/blob/88e2a69ffff2f3faae07d2a94a9f7e54808cc2d1/dir.c#L27-L72",
   "https://github.com/moonbitlang/moonbit-native-runtime/blob/88e2a69ffff2f3faae07d2a94a9f7e54808cc2d1/fs.c#L61",
   "https://github.com/moonbitlang/async/blob/v0.22.5/src/fs/dir.c#L27-L72", "https://github.com/moonbitlang/async/blob/v0.22.5/src/internal/event_loop/fs.c#L57",
+  "https://github.com/moonbitlang/async/blob/v0.22.7/src/internal/event_loop/fs.c#L17",
 ]
 
 ///|

@@ -129,7 +129,12 @@ In full runtime mode on a Linux or macOS host, the `cc` wrapper SHALL make the u
 
 #### Scenario: Linux targets get limits.h
 - **WHEN** the wrapper for linux-x64 compiles `<toolchain>/lib/runtime/dir.c`
-- **THEN** the zig command has `-include limits.h` before the original arguments
+- **THEN** the zig command has `-DNAME_MAX=255`, the Linux `limits.h` value, before the original arguments
+- **AND** the zig command does not force an include of `limits.h` or another header before the source
+
+#### Scenario: Linux host compiles async sources that define feature-test macros
+- **WHEN** `zig-cross exec host` on a Linux glibc host compiles moonbitlang/async 0.22.7 `src/internal/event_loop/fs.c`, which defines `_GNU_SOURCE` and uses `O_PATH`
+- **THEN** the file compiles
 
 #### Scenario: Darwin targets get the vnode shim
 - **WHEN** the wrapper for darwin-arm64 compiles `<toolchain>/lib/runtime/fs.c`

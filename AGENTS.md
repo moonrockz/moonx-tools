@@ -6,7 +6,7 @@ MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
 ## Toolchain
 
 - `mise` installs and pins every tool (`.config/mise/config.toml`). Run `mise trust` and then `mise install` once.
-- MoonBit `0.10.17+d971670cd`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
+- MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
 - `moon.work` lists workspace members (`apps/*`, `fixtures/*`). `moon build`, `moon test`, `moon check`, `moon fmt` at the root act on all of them.
 
 ## OpenSpec
@@ -24,7 +24,7 @@ Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell
 
 - Put the script in `scripts/` and run it with `moonx scripts/<name>.mbtx`.
 - Declare its mise task in `.config/mise/config.toml`: `run = "moonx scripts/<name>.mbtx"`.
-- Pin each import: `"moonbitlang/async@0.22.5/process"`. Use `moonbitlang/async` for processes/files/stdio, `moonbitlang/core/env` for args/env, `moonbitlang/x/sys` for exit.
+- Pin each import: `"moonbitlang/async@0.22.7/process"`. Use `moonbitlang/async` for processes/files/stdio, `moonbitlang/core/env` for args/env, `moonbitlang/x/sys` for exit.
 - `@env.args()` has the binary at index 0; task args start at 1.
 - A `.mbtx` file cannot start with a shebang; keep the toml task declaration.
 - Exit non-zero on failure.
@@ -35,6 +35,7 @@ Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell
 
 - `mise run test:native-zig` runs native tests with zig (`exec host`).
 - `mise run test:consumer` cross-builds `fixtures/consumer`, runs `exec host`, and cross-builds `apps/zig-cross` with the full runtime for the Linux and macOS targets.
+- `mise run test:doctor` (also part of `test:consumer`) checks that the pinned toolchain refuses `ZIG_CROSS_RUNTIME=sync`. Sync is assessed only for MoonBit `0.10.17+d971670cd`. Set `ZIG_CROSS_SYNC_MOON_HOME` to a complete 0.10.17 MoonBit home to run the sync runtime contracts with it; CI does this.
 - `mise run test:pubman` packs one library fixture and verifies installed Node/Chromium/TypeScript consumers, previews, and fake registries.
 - `mise run test:scripts` runs script tests (`scripts/features/*.feature` via moonspec).
 

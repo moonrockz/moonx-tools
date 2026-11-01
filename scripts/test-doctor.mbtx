@@ -1,8 +1,8 @@
 ----
 import {
-  "moonbitlang/async@0.22.5",
-  "moonbitlang/async@0.22.5/fs",
-  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/async@0.22.7",
+  "moonbitlang/async@0.22.7/fs",
+  "moonbitlang/async@0.22.7/shell",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -160,16 +160,31 @@ async fn main {
   assert_true(absent.stderr().contains("moon launch failed"))
   assert_true(absent.stderr().contains("zig-cross doctor linux-x64"))
   // The actual selected mode is visible to doctor, and only that selection enables isolation.
+  // Sync is assessed only for MoonBit 0.10.17+d971670cd, and the pinned toolchain is newer, so
+  // here sync must be refused before child execution. Set ZIG_CROSS_SYNC_MOON_HOME to a complete
+  // 0.10.17 MoonBit home to run the sync contracts with that toolchain (CI does this).
+  let sync_home = @env.get_env_var("ZIG_CROSS_SYNC_MOON_HOME")
   let sync = { "ZIG_CROSS_RUNTIME": "sync" }
+  if sync_home is Some(home) {
+    sync["MOON_HOME"] = home
+    sync["PATH"] = home +
+      "/bin:" +
+      @env.get_env_var("PATH").unwrap_or("/usr/bin:/bin")
+  }
   let active = @shell.Cmd(
-    "moonrun",
+    moonrun,
     [wasm, "--", "doctor", "windows-x64", "--json"],
     env=sync,
     cwd=work,
   ).output()
-  assert_eq(active.exit_code(), 0)
-  assert_true(active.stdout().contains("ZC_COMPATIBILITY_MODE"))
   assert_true(active.stdout().contains("ZC_WINDOWS_OSSTRING"))
+  if sync_home is None {
+    assert_eq(active.exit_code(), 1)
+    assert_true(active.stdout().contains("ZC_SYNC_UNAVAILABLE"))
+  } else {
+    assert_eq(active.exit_code(), 0)
+    assert_true(active.stdout().contains("ZC_COMPATIBILITY_MODE"))
+  }
   let runtime_before = fields["runtime_fingerprint"]
   let invalid = @shell.Cmd(
     "moonrun",
@@ -188,6 +203,48 @@ async fn main {
   assert_eq(custom.exit_code(), 1)
   assert_true(custom.stderr().contains("ZC_SYNC_UNAVAILABLE"))
   assert_false(custom.stdout().contains("should-not-run"))
+  match sync_home {
+    Some(_) => sync_contracts(root, work, moonrun, wasm, sync)
+    None => {
+      let refused = @shell.Cmd(
+        moonrun,
+        [
+          wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "echo should-not-run",
+        ],
+        env=sync,
+        cwd=work,
+      ).output()
+      assert_eq(refused.exit_code(), 1)
+      assert_true(refused.stderr().contains("ZC_SYNC_UNAVAILABLE"))
+      assert_false(refused.stdout().contains("should-not-run"))
+      println("Sync runtime refused for the unassessed pinned toolchain")
+    }
+  }
+  let after = @shell.Cmd(
+    "moonrun",
+    [wasm, "--", "doctor", "linux-x64", "--json"],
+    cwd=work,
+    env=base,
+  ).output()
+  guard @json.parse(after.stdout())
+    is { "environment": Object(after_fields), .. } else {
+    abort("after report")
+  }
+  assert_eq(after_fields["runtime_fingerprint"], runtime_before)
+  println(
+    "Doctor CLI, stream/exit contracts, isolated runtime APIs and exclusions passed",
+  )
+}
+
+///|
+/// Sync runtime contracts. They need the assessed toolchain in `sync` (PATH and MOON_HOME).
+async fn sync_contracts(
+  root : String,
+  work : String,
+  moonrun : String,
+  wasm : String,
+  sync : Map[String, String],
+) -> Unit {
   // A real package dependency calls retained runtime APIs. The negative fixture calls an excluded symbol.
   let project = work + "/consumer"
   @fs.mkdir(project + "/dep", recursive=true)
@@ -223,7 +280,7 @@ async fn main {
     ),
   )
   let built = @shell.Cmd(
-    "moonrun",
+    moonrun,
     [wasm, "--", "build", "host", "--", "."],
     env=sync,
     cwd=project,
@@ -241,7 +298,7 @@ async fn main {
     .contains("runtime APIs and dependency passed"),
   )
   let view = @shell.Cmd(
-    "moonrun",
+    moonrun,
     [
       wasm, "--", "exec", "host", "--", "/bin/sh", "-c", "printf '%s' \"$MOON_TOOLCHAIN_ROOT\"",
     ],
@@ -255,7 +312,7 @@ async fn main {
     "extern \"C\" fn platform() -> Int = \"moonbit_rt_get_platform\"\nfn main { println(platform()) }\n",
   )
   let excluded = @shell.Cmd(
-    "moonrun",
+    moonrun,
     [wasm, "--", "build", "host", "--", "."],
     env=sync,
     cwd=project,
@@ -263,18 +320,33 @@ async fn main {
   assert_eq(excluded.exit_code(), 1)
   assert_true(excluded.stderr().contains("moonbit_rt_get_platform"))
   assert_true(excluded.stderr().contains("zig-cross doctor host"))
-  let after = @shell.Cmd(
-    "moonrun",
-    [wasm, "--", "doctor", "linux-x64", "--json"],
-    cwd=work,
-    env=base,
+  // Every target header with the sync runtime, for the consumer fixture. Build a copy outside the
+  // workspace: in it, Moon would also resolve the apps, whose async version needs a newer core.
+  let fixture = work + "/fixture"
+  @shell.Cmd("cp", ["-R", root + "/fixtures/consumer", fixture]).run()
+  let targets = @shell.Cmd(
+    moonrun,
+    [
+      wasm,
+      "--",
+      "build",
+      "--target-dir",
+      work + "/cross-sync",
+      "linux-x64",
+      "linux-arm64",
+      "darwin-arm64",
+      "darwin-x64",
+      "windows-x64",
+      "--",
+      ".",
+    ],
+    env=sync,
+    cwd=fixture,
   ).output()
-  guard @json.parse(after.stdout())
-    is { "environment": Object(after_fields), .. } else {
-    abort("after report")
+  if targets.exit_code() != 0 {
+    println(targets.stdout())
+    println(targets.stderr())
   }
-  assert_eq(after_fields["runtime_fingerprint"], runtime_before)
-  println(
-    "Doctor CLI, stream/exit contracts, isolated runtime APIs and exclusions passed",
-  )
+  assert_eq(targets.exit_code(), 0)
+  println("Sync runtime contracts passed")
 }

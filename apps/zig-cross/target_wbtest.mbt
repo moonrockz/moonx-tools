@@ -169,18 +169,18 @@ test "cc_wrapper without a header fix has no header fix line" {
 async test "cc_wrapper adds the header fix only to MoonBit C sources" {
   let dir = "_build/zig-cross-test"
   @fs.mkdir(dir, recursive=true, allow_exist=true)
-  let linux = cc_wrapper(LinuxX64, header_fix=["-include", "limits.h"])
+  let linux = cc_wrapper(LinuxX64, header_fix=["-DNAME_MAX=255"])
   assert_eq(
     run_wrapper(dir + "/cc-fix", linux, [
       "-c", "/moon/lib/runtime/dir.c", "-DMOONBIT_USE_SIMDUTF", "-o", "dir.o",
     ]),
-    "cc -target x86_64-linux-musl -D_CRT_RAND_S -include limits.h -c /moon/lib/runtime/dir.c -o dir.o\n",
+    "cc -target x86_64-linux-musl -D_CRT_RAND_S -DNAME_MAX=255 -c /moon/lib/runtime/dir.c -o dir.o\n",
   )
   assert_eq(
     run_wrapper(dir + "/cc-fix", linux, [
       "-c", "/p/.mooncakes/moonbitlang/async/src/fs/dir.c", "-o", "dir.o",
     ]),
-    "cc -target x86_64-linux-musl -D_CRT_RAND_S -include limits.h -c /p/.mooncakes/moonbitlang/async/src/fs/dir.c -o dir.o\n",
+    "cc -target x86_64-linux-musl -D_CRT_RAND_S -DNAME_MAX=255 -c /p/.mooncakes/moonbitlang/async/src/fs/dir.c -o dir.o\n",
   )
   assert_eq(
     run_wrapper(dir + "/cc-fix", linux, ["-c", "src/stub.c", "-o", "stub.o"]),
@@ -202,7 +202,7 @@ async test "cc_wrapper adds the header fix only to MoonBit C sources" {
 async test "host cc wrapper adds the header fix to MoonBit C sources" {
   let dir = "_build/zig-cross-test"
   @fs.mkdir(dir, recursive=true, allow_exist=true)
-  let host = cc_wrapper(Host, header_fix=["-include", "limits.h"]).replace(
+  let host = cc_wrapper(Host, header_fix=["-DNAME_MAX=255"]).replace(
     old="$(uname -s)",
     new="Darwin",
   )
@@ -210,7 +210,7 @@ async test "host cc wrapper adds the header fix to MoonBit C sources" {
     run_wrapper(dir + "/cc-host-fix", host, [
       "-c", "/moon/lib/runtime/dir.c", "-o", "dir.o",
     ]),
-    "cc -D_CRT_RAND_S -include limits.h -c /moon/lib/runtime/dir.c -o dir.o\n",
+    "cc -D_CRT_RAND_S -DNAME_MAX=255 -c /moon/lib/runtime/dir.c -o dir.o\n",
   )
   assert_eq(
     run_wrapper(dir + "/cc-host-fix", host, ["a.o", "-o", "out"]),

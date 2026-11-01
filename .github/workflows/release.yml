@@ -109,6 +109,19 @@ jobs:
       - name: Run the task script tests
         run: mise run test:scripts
 
+      # test:consumer runs test:doctor, which runs the sync runtime contracts with this home. The
+      # sync runtime is assessed only for MoonBit 0.10.17, which is older than the pin.
+      - name: Install MoonBit 0.10.17 for the sync runtime contracts
+        shell: bash
+        env:
+          SYNC_MOONBIT_VERSION: 0.10.17+d971670cd
+        run: |
+          set -euo pipefail
+          home="$RUNNER_TEMP/moonbit-$SYNC_MOONBIT_VERSION"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
+            MOON_HOME="$home" bash -s -- "$SYNC_MOONBIT_VERSION"
+          echo "ZIG_CROSS_SYNC_MOON_HOME=$home" >> "$GITHUB_ENV"
+
       - name: Run the consumer cross-build and exec host
         run: mise run test:consumer
 

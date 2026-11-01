@@ -13,7 +13,7 @@ Command-line tools for MoonBit, runnable with moonx.
 
 ## Local development
 
-Pinned toolchain (MoonBit `0.10.17+d971670cd`, Zig `0.17.0`):
+Pinned toolchain (MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`):
 
 ```sh
 mise trust
