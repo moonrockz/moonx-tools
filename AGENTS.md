@@ -7,6 +7,8 @@ MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
 
 - `mise` installs and pins every tool (`.config/mise/config.toml`). Run `mise trust` and then `mise install` once.
 - MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`. Change the MoonBit version in the version field and in each URL together.
+- `windows-arm64` uses MoonBit's x64 archive under emulation. The mise post-install hook completes core, `moonx` and the registry on every supported host; mise sets `MOON_HOME` to that install.
+- General repository tasks support Windows. Tests print skips for pubman on every backend and zig-cross on native; zig-cross itself still needs Linux or macOS.
 - `moon.work` lists workspace members (`apps/*`, `fixtures/*`). `moon build`, `moon test`, `moon check`, `moon fmt` at the root act on all of them.
 
 ## OpenSpec
@@ -21,6 +23,9 @@ MoonBit monorepo for command-line tools runnable with `moonx`. Currently holds
 ## Task scripts
 
 Write task automation as standalone MoonBit `.mbtx` scripts, not bash/PowerShell. See Smithy's `AGENTS.md` pattern.
+
+The two `scripts/bootstrap/complete-moonbit.*` scripts are the exception. They install
+the core library before MoonBit scripts can compile and run through mise's post-install hook.
 
 - Put the script in `scripts/` and run it with `moonx scripts/<name>.mbtx`.
 - Declare its mise task in `.config/mise/config.toml`: `run = "moonx scripts/<name>.mbtx"`.

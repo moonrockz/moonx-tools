@@ -85,6 +85,7 @@ pub fn expected_format(target : Target) -> Format? {
     DarwinArm64 => Some(MachO(0x0100000C))
     DarwinX64 => Some(MachO(0x01000007))
     WindowsX64 => Some(Pe(0x8664))
+    WindowsArm64 => Some(Pe(0xAA64))
     Host => None
   }
 }

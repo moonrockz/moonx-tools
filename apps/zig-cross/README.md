@@ -44,11 +44,12 @@ target. Use `host` to compile the tests of a package with zig.
 | `darwin-arm64` | `aarch64-macos`       | Mach-O, cputype 16777228 |
 | `darwin-x64`   | `x86_64-macos`        | Mach-O, cputype 16777223 |
 | `windows-x64`  | `x86_64-windows-gnu`  | PE, machine 0x8664    |
+| `windows-arm64` | `aarch64-windows-gnu` | PE, machine 0xAA64    |
 | `host`         | none (the host)       | none                  |
 
 ## Do not ship a cross-built Windows binary
 
-A `windows-x64` binary that zig cross-builds is wrong for MoonBit code that uses `OsString`: arguments,
+A `windows-x64` or `windows-arm64` binary that zig cross-builds is wrong for MoonBit code that uses `OsString`: arguments,
 environment variables and paths. The `core` library is prebuilt for the host. Its `#cfg(platform="windows")`
 setting is resolved from the host OS, not from the target. A Windows binary built on Linux or macOS therefore
 reads its arguments wrongly. Build Windows binaries on Windows until moon can set the target platform
@@ -72,12 +73,12 @@ Two upstream bugs make a plain `MOON_CC="zig cc -target ..."` fail.
 
 ## Diagnose before upgrading or building
 
-`doctor [<target>...] [--json]` runs outside a project without building, writing wrappers or changing a toolchain. No targets selects all six targets, including `host`. Repeated targets are removed. Tool probes capture output and time out after three seconds each. Help and version do not probe tools.
+`doctor [<target>...] [--json]` runs outside a project without building, writing wrappers or changing a toolchain. No targets selects all seven targets, including `host`. Repeated targets are removed. Tool probes capture output and time out after three seconds each. Help and version do not probe tools.
 
 ```sh
 moonx moonrockz/zig-cross@<version> doctor
-moonx moonrockz/zig-cross@<version> doctor windows-x64 --json > report.json
-ZIG_CROSS_RUNTIME=sync moonx moonrockz/zig-cross@<version> doctor windows-x64 --json
+moonx moonrockz/zig-cross@<version> doctor windows-x64 windows-arm64 --json > report.json
+ZIG_CROSS_RUNTIME=sync moonx moonrockz/zig-cross@<version> doctor windows-x64 windows-arm64 --json
 ```
 
 For agents, stdout is one JSON document with `schema_version: 1`, `environment`, `targets`, `status` and `findings`. Environment includes host, Moon/compiler/Zig versions, detected toolchain root, runtime fingerprint, runtime mode and detected macOS SDK and toolchain override names. Each finding has a stable `code`, `severity`, affected `targets`, `message`, `applicability`, `evidence` and `next_steps`. Steps distinguish `command` from `instruction` and state prerequisites. Replace placeholders such as `<package-path>` before running commands. When using `moonx`, replace the `zig-cross` executable in a suggested command with `moonx moonrockz/zig-cross@<version>`.
@@ -122,4 +123,4 @@ zig-cross copies these six files from the detected current installation into a t
 
 `ZC_COMPATIBILITY_MODE` identifies actual sync selection and its limits. The mode excludes the runtime's event loop, asynchronous filesystem, networking, processes, TLS, thread pools and watchers. A dependency requiring those excluded symbols fails at link time, with raw linker output and a doctor hint. To use those APIs, unset `ZIG_CROSS_RUNTIME` and build on the target OS with a native compiler supported by MoonBit. That native build should invoke Moon directly, outside zig-cross.
 
-Validation covers the consumer's ELF/Mach-O/PE headers for all five targets, a dependency exercising synchronous runtime and environment/UTF APIs on the host, host execution, and expected failure for an excluded symbol. Header/link success alone does not establish behavior for every library or OS. Linux/macOS integration is gated in CI. Windows is link/header checked only and retains `ZC_WINDOWS_OSSTRING`; use a Windows-native build for programs using OsString.
+Validation covers the consumer's ELF/Mach-O/PE headers for all six targets, a dependency exercising synchronous runtime and environment/UTF APIs on the host, host execution, and expected failure for an excluded symbol. Header/link success alone does not establish behavior for every library or OS. Linux/macOS integration is gated in CI. Both Windows targets are link/header checked only and retains `ZC_WINDOWS_OSSTRING`; use a Windows-native build for programs using OsString.

@@ -7,12 +7,14 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
 }
 ----
 
 ///|
 /// Build one fixture bundle per host, verify its installed consumers, then
 /// reuse those exact bytes for every backend's command/dry-run contracts.
+
 ///|
 suberror TaskFailure {
   TaskFailure(String)
@@ -87,6 +89,10 @@ async fn cli(
 
 ///|
 async fn main {
+  if @env.get_env_var("OS") == Some("Windows_NT") {
+    eprintln("test:pubman needs a Linux or macOS host")
+    @sys.exit(1)
+  }
   let root = @fs.realpath(@env.current_dir().unwrap())
   gate_contract(root)
   let config = root + "/fixtures/pubman-consumer/pubman.json"
@@ -357,7 +363,7 @@ async fn negative_consumers(
 
 ///|
 /// Exercise the actual checked-in aggregate expression against success,
-/// failure, cancellation, skip and missing required consumer results.
+/// failure, cancellation, skip and missing required consumer or Windows host results.
 async fn gate_contract(root : String) -> Unit {
   let workflow = @fs.read_file(root + "/.github/workflows/ci.yml").text()
   guard workflow.find("jq -e '") is Some(start) else {
@@ -368,37 +374,39 @@ async fn gate_contract(root : String) -> Unit {
     abort("missing CI gate expression")
   }
   let expression = tail[:end].to_owned()
-  for state in ["success", "failure", "cancelled", "skipped", "missing"] {
-    let needs : Map[String, Json] = Map([])
-    for
-      key in [
-        "build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
-        "test-scripts",
-      ] {
-      if key == "consumer" && state == "missing" {
-        continue
+  for checked_job in ["consumer", "windows-host"] {
+    for state in ["success", "failure", "cancelled", "skipped", "missing"] {
+      let needs : Map[String, Json] = Map([])
+      for
+        key in [
+          "build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
+          "test-scripts", "windows-host",
+        ] {
+        if key == checked_job && state == "missing" {
+          continue
+        }
+        needs[key] = {
+          "result": if key == checked_job {
+            state
+          } else {
+            "success"
+          },
+        }
       }
-      needs[key] = {
-        "result": if key == "consumer" {
-          state
-        } else {
-          "success"
-        },
-      }
+      let (code, _, _) = call(
+        "jq",
+        [
+          "-n",
+          "-e",
+          "--argjson",
+          "needs",
+          Json::object(needs).stringify(),
+          "$needs | " + expression,
+        ],
+        root,
+      )
+      assert_eq(code == 0, state == "success")
     }
-    let (code, _, _) = call(
-      "jq",
-      [
-        "-n",
-        "-e",
-        "--argjson",
-        "needs",
-        Json::object(needs).stringify(),
-        "$needs | " + expression,
-      ],
-      root,
-    )
-    assert_eq(code == 0, state == "success")
   }
   let release = @fs.read_file(root + "/.github/workflows/release.yml").text()
   assert_true(release.contains("run: mise run test:pubman"))

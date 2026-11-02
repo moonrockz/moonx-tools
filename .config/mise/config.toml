@@ -32,20 +32,23 @@ zig = "0.17.0"
 # here and in each URL (with "+" written as "%2B"), taken from
 # https://cli.moonbitlang.com/binaries/<version>/.
 #
-# The binary archive omits the core library. CI (and a fresh machine) completes it with
-# `curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME=$(mise where http:moonbit) bash -s -- <version>`.
+# The binary archive omits core and moonx. The hook completes the same install locally and in CI.
 
 [tools."http:moonbit"]
 version = "0.10.18+6c83a7f62"
 bin_path = "bin"
+postinstall = "{% if os() == 'windows' %}powershell -NoProfile -ExecutionPolicy Bypass -File \"{{ config_root }}/scripts/bootstrap/complete-moonbit.ps1\"{% else %}sh \"{{ config_root }}/scripts/bootstrap/complete-moonbit.sh\"{% endif %}"
 
 [tools."http:moonbit".platforms]
 linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-linux-x86_64.tar.gz" }
 macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-darwin-aarch64.tar.gz" }
 windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
+# MoonBit publishes x64 Windows binaries only; Windows arm64 runs them under x64 emulation.
+windows-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.18%2B6c83a7f62/moonbit-windows-x86_64.zip", format = "zip" }
 
 [env]
 _.path = ["./node_modules/.bin"]
+MOON_HOME = { value = "{{ tools['http:moonbit'].path }}", tools = true }
 
 # Every task is a MoonBit script: `moonx scripts/<name>.mbtx`. Pass arguments after `--`.
 

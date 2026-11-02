@@ -5,7 +5,9 @@ context: |
   This is a MoonBit monorepo of command-line tools distributed through moonx.
   Keep tools pinned in .config/mise/config.toml and task automation in scripts/*.mbtx.
   Preserve existing CLI behavior unless the change explicitly proposes a compatibility break.
-  zig-cross runs on Linux and macOS; Windows is a cross-compilation target, not a supported host.
+  zig-cross runs on Linux and macOS; Windows is a cross-compilation target for that tool.
+  General repository tasks also support Windows hosts, with named skips for POSIX-dependent suites.
+  scripts/bootstrap completes MoonBit before task scripts can compile and is the exception to the .mbtx rule.
   All modules share the version in the root moon.mod.
 
 rules:

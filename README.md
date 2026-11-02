@@ -4,7 +4,7 @@ Command-line tools for MoonBit, runnable with moonx.
 ## Tools
 
 - [`apps/zig-cross`](apps/zig-cross/README.md) — `moonrockz/zig-cross`: cross-compile MoonBit native
-  binaries with zig (`linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`, `host`).
+  binaries with zig (`linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`, `windows-arm64`, `host`).
   Moved from [moonrockz/smithy](https://github.com/moonrockz/smithy) with no CLI changes.
 
 - [`apps/pubman`](apps/pubman/README.md): `moonrockz/pubman` packages and verifies
@@ -12,6 +12,11 @@ Command-line tools for MoonBit, runnable with moonx.
   Authors supply adapters, wrappers, declarations and consumer checks.
 
 ## Local development
+
+Repository tasks support Linux x64, macOS arm64, Windows x64 and Windows arm64.
+On Windows arm64, MoonBit's x64 toolchain runs under Windows' x64 emulation and
+produces x64 native binaries. `mise install` completes core, `moonx` and the
+registry index through a post-install bootstrap. `MOON_HOME` selects that install.
 
 Pinned toolchain (MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`):
 
@@ -27,6 +32,11 @@ mise run build
 
 Tool-specific checks:
 
+On Windows, `test` prints skips for `apps/pubman` on every backend and
+`apps/zig-cross` on native. Those suites still run on Linux and macOS in CI.
+`test:doctor`, `test:consumer`, `test:pubman`, `test:native-zig` and `build:cross`
+need a Linux or macOS host and exit 1 on Windows. `test:scripts` runs on Windows.
+
 ```sh
 mise run test:native-zig   # native tests with zig as the C compiler (host wrapper)
 mise run test:consumer     # real cross-build + exec host against fixtures/consumer
@@ -36,6 +46,17 @@ mise run test:pubman       # packed Node/Chromium/TypeScript consumers and previ
 ```
 
 Consumer usage:
+
+Text checkouts use LF, including when Git has `core.autocrlf=true`. To refresh an
+older CRLF checkout, first commit or stash every local change. With a clean
+working tree, run these commands from the repository root:
+
+```sh
+git rm --cached -r -q .
+git reset --hard HEAD
+```
+
+Restore stashed changes afterward if needed.
 
 ```sh
 moonx moonrockz/zig-cross@<version> doctor linux-x64 --json
@@ -47,8 +68,9 @@ moonx moonrockz/zig-cross@<version> --help
 
 Run `doctor` before choosing a target or upgrading MoonBit. It emits stable codes and actionable steps for users and agents. Full-runtime Linux and local macOS header fixes are version-bounded. `ZIG_CROSS_RUNTIME=sync` is an explicit experimental subset for cross-target consumers that do not need the new asynchronous runtime APIs. See the [compatibility contract](apps/zig-cross/README.md#moonbit-01017-compatibility).
 
-Windows note: a `windows-x64` binary that zig cross-builds is wrong for MoonBit code
+Windows note: a `windows-x64` or `windows-arm64` binary that zig cross-builds is wrong for MoonBit code
 that uses `OsString` (see `apps/zig-cross/README.md`). Build Windows binaries on Windows.
+Both Windows targets are checked for linking and headers only. That does not prove runtime correctness.
 `zig-cross` itself runs on Linux/macOS only.
 
 ## Planning changes with OpenSpec
@@ -105,9 +127,11 @@ See the [OpenSpec documentation](https://openspec.dev/docs/setup) for the workfl
 - `build` / `test` matrix (`wasm`, `wasm-gc`, `js`, `native`)
 - `test-native-zig` (`exec host` native tests)
 - `test-scripts`
+- `windows-host` on Windows arm64: lint, validation, script tests, supported suites and builds
 - `consumer` on Linux and macOS: real cross-build, header validation of the
   cross-built `.exe` (ELF/Mach-O/PE, mirroring `format.mbt`), `exec host` tests,
   execution of a host-compatible binary, and pubman packed-package verification
+- `sync-moonbit-0-10-17` on Linux and macOS: assessed sync contracts and all six cross-target headers
 - `ci-ok` gate
 
 ## Release

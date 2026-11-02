@@ -5,12 +5,17 @@ import {
   "moonbitlang/async@0.22.7/shell",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
 }
 ----
 
 ///|
 /// Exercise the installed command contract from outside a project with real and controlled tools.
 async fn main {
+  if @env.get_env_var("OS") == Some("Windows_NT") {
+    eprintln("test:doctor needs a Linux or macOS host")
+    @sys.exit(1)
+  }
   let root = @env.current_dir().unwrap()
   @shell.Cmd("moon", ["build", "apps/zig-cross", "--target", "wasm"]).run()
   let wasm = root +
@@ -131,6 +136,29 @@ async fn main {
   ).output()
   assert_eq(windows.exit_code(), 0)
   assert_true(windows.stderr().contains("ZC_WINDOWS_OSSTRING"))
+  let arm_dir = work + "/pe/windows-arm64/native/release/build"
+  @fs.mkdir(arm_dir, recursive=true)
+  pe[132] = b'\x64'
+  pe[133] = b'\xAA'
+  @fs.write_file(arm_dir + "/fixture.exe", Bytes::from_array(pe))
+  let arm_args = [
+    wasm,
+    "--",
+    "build",
+    "--target-dir",
+    work + "/pe",
+    "windows-arm64",
+  ]
+  let arm = @shell.Cmd(moonrun, arm_args, env=fake, cwd=work).output()
+  assert_eq(arm.exit_code(), 0)
+  assert_true(arm.stderr().contains("ZC_WINDOWS_OSSTRING"))
+  pe[133] = b'\x86'
+  @fs.write_file(arm_dir + "/fixture.exe", Bytes::from_array(pe))
+  let wrong_arm = @shell.Cmd(moonrun, arm_args, env=fake, cwd=work).output()
+  assert_eq(wrong_arm.exit_code(), 1)
+  assert_true(
+    wrong_arm.stdout().contains("expected Pe(43620), found Pe(34404)"),
+  )
   @fs.write_file(bin + "/moon", "#!/bin/sh\nsleep 10\n", permission=0o755)
   let timeout = @shell.Cmd(
     moonrun,
@@ -245,6 +273,15 @@ async fn sync_contracts(
   wasm : String,
   sync : Map[String, String],
 ) -> Unit {
+  let arm_doctor = @shell.Cmd(
+    moonrun,
+    [wasm, "--", "doctor", "windows-arm64", "--json"],
+    env=sync,
+    cwd=work,
+  ).output()
+  assert_eq(arm_doctor.exit_code(), 0)
+  assert_true(arm_doctor.stdout().contains("ZC_COMPATIBILITY_MODE"))
+  assert_true(arm_doctor.stdout().contains("ZC_WINDOWS_OSSTRING"))
   // A real package dependency calls retained runtime APIs. The negative fixture calls an excluded symbol.
   let project = work + "/consumer"
   @fs.mkdir(project + "/dep", recursive=true)
@@ -324,6 +361,7 @@ async fn sync_contracts(
   // workspace: in it, Moon would also resolve the apps, whose async version needs a newer core.
   let fixture = work + "/fixture"
   @shell.Cmd("cp", ["-R", root + "/fixtures/consumer", fixture]).run()
+  println("All six cross target headers with the explicit sync runtime")
   let targets = @shell.Cmd(
     moonrun,
     [
@@ -331,20 +369,21 @@ async fn sync_contracts(
       "--",
       "build",
       "--target-dir",
-      work + "/cross-sync",
+      root + "/_build/cross-sync",
       "linux-x64",
       "linux-arm64",
       "darwin-arm64",
       "darwin-x64",
       "windows-x64",
+      "windows-arm64",
       "--",
       ".",
     ],
     env=sync,
     cwd=fixture,
   ).output()
+  println(targets.stdout())
   if targets.exit_code() != 0 {
-    println(targets.stdout())
     println(targets.stderr())
   }
   assert_eq(targets.exit_code(), 0)

@@ -20,7 +20,7 @@ import {
 /// 4. The full runtime cross-builds `apps/zig-cross` for the Linux and macOS targets, on Linux and
 ///    macOS hosts, without a macOS SDK.
 /// 5. `test:doctor` checks the doctor and runtime contracts. It also runs the sync runtime
-///    contracts, all five target headers included, when `ZIG_CROSS_SYNC_MOON_HOME` names the
+///    contracts, all six target headers included, when `ZIG_CROSS_SYNC_MOON_HOME` names the
 ///    assessed MoonBit 0.10.17 home.
 ///
 /// Usage: `mise run test:consumer`, or `moonx scripts/test-consumer.mbtx`.
@@ -101,6 +101,10 @@ async fn find_exe(dir : String) -> String? {
 
 ///|
 async fn main {
+  if @env.get_env_var("OS") == Some("Windows_NT") {
+    eprintln("test:consumer needs a Linux or macOS host")
+    @sys.exit(1)
+  }
   let (_, os_out) = stdout_of("uname", ["-s"])
   let (_, arch_out) = stdout_of("uname", ["-m"])
   let target = cross_target(
@@ -144,8 +148,9 @@ async fn main {
     "Linux and macOS targets with the full runtime and moonbitlang/async",
     "moon",
     [
-      "run", "apps/zig-cross", "--target", "wasm", "--", "build", "--target-dir", "_build/cross-full",
-      "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "--", "apps/zig-cross",
+      "run", "apps/zig-cross", "--target", "wasm", "--", "build", "--target-dir",
+      "_build/cross-full", "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64",
+      "--", "apps/zig-cross",
     ],
   )
   run_step("Doctor and isolated runtime contracts", "mise", [

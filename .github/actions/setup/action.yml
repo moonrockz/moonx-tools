@@ -11,6 +11,7 @@ runs:
   using: composite
   steps:
     - name: Install mise and pinned tools
+      if: runner.os != 'Windows'
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -25,24 +26,42 @@ runs:
         mise trust
         mise install
 
-    - name: Complete the MoonBit toolchain
+    - name: Export the MoonBit toolchain
+      if: runner.os != 'Windows'
       shell: bash
-      # The binary archive that mise installs omits the core library and moonx. The official
-      # installer adds them into the same directory, for the same pinned version.
       run: |
         set -euo pipefail
         export PATH="$HOME/.local/bin:$PATH"
         moonbit_dir="$(mise where http:moonbit)"
-        moonbit_version="$(mise current http:moonbit)"
-        curl -fsSL https://cli.moonbitlang.com/install/unix.sh | \
-          MOON_HOME="$moonbit_dir" bash -s -- "$moonbit_version"
-        chmod +x "$moonbit_dir"/bin/* || true
         echo "$moonbit_dir/bin" >> "$GITHUB_PATH"
         echo "MOON_HOME=$moonbit_dir" >> "$GITHUB_ENV"
 
-    - name: Report versions and update the registry
+    - name: Report versions
+      if: runner.os != 'Windows'
       shell: bash
       run: |
         set -euo pipefail
         moon version --all
-        moon update
+
+    - name: Install mise and pinned tools on Windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        MISE_GITHUB_TOKEN: ${{ inputs.github-token }}
+        MISE_INSTALL_MODIFY_PATH: '0'
+      run: |
+        $ErrorActionPreference = 'Stop'
+        Invoke-RestMethod https://mise.run/powershell | Invoke-Expression
+        $miseBin = Join-Path $HOME '.local/bin'
+        $env:PATH = "$miseBin;$env:PATH"
+        $miseBin >> $env:GITHUB_PATH
+        "$env:LOCALAPPDATA/mise/shims" >> $env:GITHUB_PATH
+        mise --version
+        mise trust
+        mise install
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $moonbitDir = mise where http:moonbit
+        "$moonbitDir/bin" >> $env:GITHUB_PATH
+        "MOON_HOME=$moonbitDir" >> $env:GITHUB_ENV
+        mise exec -- moon version --all

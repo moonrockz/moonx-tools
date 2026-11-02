@@ -11,8 +11,9 @@ import {
 /// Check MoonBit formatting and run the type checker across the workspace.
 ///
 /// Usage: `mise run lint:moonbit`, or `moonx scripts/lint-moonbit.mbtx`.
+
 ///|
-async fn moon(args : Array[String]) -> Int {
+async fn moon(args : Array[String]) -> Int32 {
   @process.run("moon", args, stdout=@stdio.stdout, stderr=@stdio.stderr)
 }
 
@@ -25,7 +26,7 @@ async fn main {
     @sys.exit(if fmt > 0 { fmt } else { 1 })
   }
   println("🔍 Checking MoonBit code...")
-  let check = moon(["check", "--deny-warn"])
+  let check = moon(["check", "--deny-warn", "--no-mbti"])
   if check != 0 {
     println("❌ moon check reported problems.")
     @sys.exit(if check > 0 { check } else { 1 })
