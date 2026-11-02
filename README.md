@@ -13,6 +13,11 @@ Command-line tools for MoonBit, runnable with moonx.
 
 ## Local development
 
+Repository tasks support Linux x64, macOS arm64, Windows x64 and Windows arm64.
+On Windows arm64, MoonBit's x64 toolchain runs under Windows' x64 emulation and
+produces x64 native binaries. `mise install` completes core, `moonx` and the
+registry index through a post-install bootstrap. `MOON_HOME` selects that install.
+
 Pinned toolchain (MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`):
 
 ```sh
@@ -27,6 +32,11 @@ mise run build
 
 Tool-specific checks:
 
+On Windows, `test` prints skips for `apps/pubman` on every backend and
+`apps/zig-cross` on native. Those suites still run on Linux and macOS in CI.
+`test:doctor`, `test:consumer`, `test:pubman`, `test:native-zig` and `build:cross`
+need a Linux or macOS host and exit 1 on Windows. `test:scripts` runs on Windows.
+
 ```sh
 mise run test:native-zig   # native tests with zig as the C compiler (host wrapper)
 mise run test:consumer     # real cross-build + exec host against fixtures/consumer
@@ -36,6 +46,17 @@ mise run test:pubman       # packed Node/Chromium/TypeScript consumers and previ
 ```
 
 Consumer usage:
+
+Text checkouts use LF, including when Git has `core.autocrlf=true`. To refresh an
+older CRLF checkout, first commit or stash every local change. With a clean
+working tree, run these commands from the repository root:
+
+```sh
+git rm --cached -r -q .
+git reset --hard HEAD
+```
+
+Restore stashed changes afterward if needed.
 
 ```sh
 moonx moonrockz/zig-cross@<version> doctor linux-x64 --json

@@ -5,12 +5,17 @@ import {
   "moonbitlang/async@0.22.7/shell",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
 }
 ----
 
 ///|
 /// Exercise the installed command contract from outside a project with real and controlled tools.
 async fn main {
+  if @env.get_env_var("OS") == Some("Windows_NT") {
+    eprintln("test:doctor needs a Linux or macOS host")
+    @sys.exit(1)
+  }
   let root = @env.current_dir().unwrap()
   @shell.Cmd("moon", ["build", "apps/zig-cross", "--target", "wasm"]).run()
   let wasm = root +

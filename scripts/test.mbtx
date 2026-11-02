@@ -6,6 +6,7 @@ import {
   "moonbitlang/async@0.22.7/stdio",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
+  "moonrockz/moonspec@0.11.0",
 }
 ----
 
@@ -18,8 +19,18 @@ import {
 /// `moon test <path>` tests only the package at exactly that path, not its
 /// sub-packages, so packages are discovered from `moon.work` recursively.
 /// The tests module uses async and runs on js and native only.
+
 ///|
 let all_targets : Array[String] = ["wasm", "wasm-gc", "js", "native"]
+
+///|
+fn needs_posix(os : String, module_path : String, target : String) -> Bool {
+  let windows_skips = [("apps/pubman", "*"), ("apps/zig-cross", "native")]
+  os == "Windows_NT" &&
+  windows_skips.any(entry => {
+    entry.0 == module_path && (entry.1 == "*" || entry.1 == target)
+  })
+}
 
 ///|
 /// Active workspace members, excluding the package-less workspace root.
@@ -92,6 +103,12 @@ async fn main {
     println("🧪 Testing for \{target}...")
     let paths = []
     for module_path in members(@fs.read_file("moon.work").text()) {
+      if needs_posix(@env.get_env_var("OS").unwrap_or(""), module_path, target) {
+        println(
+          "⏭️  \{module_path} (\{target}) skipped: needs a Linux or macOS host",
+        )
+        continue
+      }
       // The acceptance module uses async, which supports js and native here.
       if module_path == "tests" && target != "js" && target != "native" {
         continue
@@ -125,4 +142,36 @@ test "package target restrictions preserve native and wasm only" {
   assert_true(supports("supported_targets = \"native+wasm\"", "wasm"))
   assert_false(supports("supported_targets = \"native+wasm\"", "wasm-gc"))
   assert_true(supports("", "js"))
+}
+
+///|
+struct TestWorld {}
+
+///|
+impl @moonspec.World for TestWorld with fn configure(_, setup) {
+  setup.then3("on {string}, {string} for {string} is skipped", fn(
+    os : String,
+    module_path : String,
+    target : String,
+  ) raise {
+    assert_true(needs_posix(os, module_path, target))
+  })
+  setup.then3("on {string}, {string} for {string} runs", fn(
+    os : String,
+    module_path : String,
+    target : String,
+  ) raise {
+    assert_false(needs_posix(os, module_path, target))
+  })
+}
+
+///|
+async test "host skip list feature" {
+  @moonspec.run_or_fail(
+    fn() { TestWorld::{ } },
+    @moonspec.RunOptions::new([
+      @moonspec.FeatureSource::File("features/test.feature"),
+    ]),
+  )
+  |> ignore
 }
