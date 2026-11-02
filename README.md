@@ -127,9 +127,11 @@ See the [OpenSpec documentation](https://openspec.dev/docs/setup) for the workfl
 - `build` / `test` matrix (`wasm`, `wasm-gc`, `js`, `native`)
 - `test-native-zig` (`exec host` native tests)
 - `test-scripts`
+- `windows-host` on Windows arm64: lint, validation, script tests, supported suites and builds
 - `consumer` on Linux and macOS: real cross-build, header validation of the
   cross-built `.exe` (ELF/Mach-O/PE, mirroring `format.mbt`), `exec host` tests,
   execution of a host-compatible binary, and pubman packed-package verification
+- `sync-moonbit-0-10-17` on Linux and macOS: assessed sync contracts and all six cross-target headers
 - `ci-ok` gate
 
 ## Release

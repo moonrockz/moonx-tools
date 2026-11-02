@@ -250,8 +250,8 @@ jobs:
           "$home/bin/moon" version --all
           echo "ZIG_CROSS_SYNC_MOON_HOME=$home" >> "$GITHUB_ENV"
 
-      - name: Run the doctor and sync runtime contracts
-        run: mise run test:doctor
+      - name: Run the consumer and assessed sync runtime contracts
+        run: mise run test:consumer
 
       - name: Verify the embedded PE check against the arm64 consumer
         shell: bash

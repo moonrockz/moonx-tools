@@ -363,7 +363,7 @@ async fn negative_consumers(
 
 ///|
 /// Exercise the actual checked-in aggregate expression against success,
-/// failure, cancellation, skip and missing required consumer results.
+/// failure, cancellation, skip and missing required consumer or Windows host results.
 async fn gate_contract(root : String) -> Unit {
   let workflow = @fs.read_file(root + "/.github/workflows/ci.yml").text()
   guard workflow.find("jq -e '") is Some(start) else {

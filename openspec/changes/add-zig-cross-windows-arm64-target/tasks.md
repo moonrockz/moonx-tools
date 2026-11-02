@@ -23,9 +23,9 @@
 
 ## 3. Target table and executable format
 
-- [ ] 3.1 Add `WindowsArm64` to `Target` in `apps/zig-cross/target.mbt`: name `windows-arm64`, `parse`, triple `aarch64-windows-gnu`, and `windows-arm64` in `all_target_names()` after `windows-x64`. Add an `is_windows(target)` predicate that is true for both Windows targets. Extend `target_wbtest.mbt` for the name, parse, triple and predicate. Verify with `moon test apps/zig-cross --target wasm`, and with `--target native` on a Linux or macOS host or in CI.
+- [x] 3.1 Add `WindowsArm64` to `Target` in `apps/zig-cross/target.mbt`: name `windows-arm64`, `parse`, triple `aarch64-windows-gnu`, and `windows-arm64` in `all_target_names()` after `windows-x64`. Add an `is_windows(target)` predicate that is true for both Windows targets. Extend `target_wbtest.mbt` for the name, parse, triple and predicate. Verify with `moon test apps/zig-cross --target wasm`, and with `--target native` on a Linux or macOS host or in CI.
 - [x] 3.2 Return `Pe(0xAA64)` from `expected_format(WindowsArm64)` in `apps/zig-cross/format.mbt`. In `format_wbtest.mbt`, add a matching `0xAA64` header and a `0x8664` header that fails `check_format(WindowsArm64, ...)` with an expected/found message. Verify with `moon test apps/zig-cross --target wasm`.
-- [ ] 3.3 Add `cc_wrapper(WindowsArm64)` and `ar_wrapper(WindowsArm64)` tests that assert `-target aarch64-windows-gnu -D_CRT_RAND_S`, the simdutf/libbacktrace filtering, and no header fix flags. Verify with `moon test apps/zig-cross --target wasm` for the text assertions. Tests that execute the wrappers run with `--target native` on a Linux or macOS host or in CI.
+- [x] 3.3 Add `cc_wrapper(WindowsArm64)` and `ar_wrapper(WindowsArm64)` tests that assert `-target aarch64-windows-gnu -D_CRT_RAND_S`, the simdutf/libbacktrace filtering, and no header fix flags. Verify with `moon test apps/zig-cross --target wasm` for the text assertions. Tests that execute the wrappers run with `--target native` on a Linux or macOS host or in CI.
 - [x] 3.4 Add `windows-arm64` to the targets line in `apps/zig-cross/cli.mbt`. Update the expected unknown-target message in `cli_wbtest.mbt`, and add a parse test for `doctor` with no targets that expects seven targets. Verify with `moon test apps/zig-cross --target wasm`.
 - [x] 3.5 In `apps/zig-cross/README.md` and `README.md`, update:
   - the Targets table (triple `aarch64-windows-gnu`, `PE, machine 0xAA64`) and the target lists
@@ -43,7 +43,7 @@
   
   Verify with `moon test apps/zig-cross --target wasm` that existing `windows-x64` tests still pass.
 - [x] 4.2 Add doctor tests pinning the fall-through behavior for `windows-arm64`. In full runtime mode with an assessed toolchain, it gets a `ZC_WINDOWS_MSVC_RUNTIME` error with a `ZIG_CROSS_RUNTIME=sync zig-cross build windows-arm64 -- <package-path>` next step and status `error`, and `header_flags(WindowsArm64, ...)` is empty. Verify with `moon test apps/zig-cross --target wasm`.
-- [ ] 4.3 In `scripts/test-doctor.mbtx`, after the host guard:
+- [x] 4.3 In `scripts/test-doctor.mbtx`, after the host guard:
   - add a fake PE fixture with machine `0xAA64` under `windows-arm64`: the build exits 0 and stderr contains `ZC_WINDOWS_OSSTRING`
   - add a fake PE fixture with machine `0x8664` under `windows-arm64`: the build exits 1
   - add a sync-mode `doctor windows-arm64 --json` check for `ZC_COMPATIBILITY_MODE` and `ZC_WINDOWS_OSSTRING`
@@ -53,11 +53,11 @@
 ## 5. Consumer and zig-cross CI validation
 
 - [ ] 5.1 Add `windows-arm64` to the sync-mode consumer build in `scripts/test-doctor.mbtx`, invoked by `scripts/test-consumer.mbtx`, and rename the step "All six cross target headers with the explicit sync runtime". Verify with `mise run test:consumer` with `ZIG_CROSS_SYNC_MOON_HOME` pointing to the assessed 0.10.17 home on a Linux or macOS host or in the CI sync-runtime jobs: the summary shows a passing `windows-arm64` row.
-- [ ] 5.2 Change the `windows-` branch of the PE check in `.github/workflows/ci.yml` to expect `0xAA64` for `windows-arm64` and `0x8664` for `windows-x64`. Verify by running the embedded Python against the arm64 binary from 5.1 with target `windows-arm64`. It should print `OK windows-arm64: PE machine 43620`.
+- [x] 5.2 Change the `windows-` branch of the PE check in `.github/workflows/ci.yml` to expect `0xAA64` for `windows-arm64` and `0x8664` for `windows-x64`. Verify by running the embedded Python against the arm64 binary from 5.1 with target `windows-arm64`. It should print `OK windows-arm64: PE machine 43620`.
 
 ## 6. Windows CI job
 
-- [ ] 6.1 Make `.github/actions/setup/action.yml` work on Windows runners: use `shell: pwsh` steps when `runner.os == 'Windows'` to install mise, put its shims and the MoonBit bin directory on `GITHUB_PATH`, and set `MOON_HOME`. Add a `windows-host` job on `windows-11-arm` with a 30-minute timeout that runs `mise run lint`, `validate`, `test:scripts`, `test` and `build`, and add it to `ci-ok`'s `needs`. Verify on a pushed branch that the job passes and its log shows the skip lines. If the runner image cannot run it, switch to `windows-latest` and record why in design.md.
+- [x] 6.1 Make `.github/actions/setup/action.yml` work on Windows runners: use `shell: pwsh` steps when `runner.os == 'Windows'` to install mise, put its shims and the MoonBit bin directory on `GITHUB_PATH`, and set `MOON_HOME`. Add a `windows-host` job on `windows-11-arm` with a 30-minute timeout that runs `mise run lint`, `validate`, `test:scripts`, `test` and `build`, and add it to `ci-ok`'s `needs`. Verify on a pushed branch that the job passes and its log shows the skip lines. If the runner image cannot run it, switch to `windows-latest` and record why in design.md.
 - [ ] 6.2 Verify that the Ubuntu and macOS jobs pass with the toolchain completed by the post-install hook and without the removed bash step.
 
 ## 7. Integration checks
