@@ -53,6 +53,21 @@ test "detect_format reads the Mach-O cputype" {
 ///|
 test "detect_format reads the PE machine" {
   assert_eq(detect_format(pe(0x8664, 0x80)), Pe(34404))
+  assert_eq(detect_format(pe(0xAA64, 0x80)), Pe(43620))
+}
+
+///|
+test "Windows arm64 accepts only the arm64 PE machine" {
+  assert_eq(expected_format(WindowsArm64), Some(Pe(0xAA64)))
+  assert_eq(check_format(WindowsArm64, pe(0xAA64, 0x80)), None)
+  assert_eq(
+    check_format(WindowsArm64, pe(0x8664, 0x80)),
+    Some("windows-arm64: expected Pe(43620), found Pe(34404)"),
+  )
+  assert_eq(
+    check_format(WindowsArm64, pe(0xA641, 0x80)),
+    Some("windows-arm64: expected Pe(43620), found Pe(42561)"),
+  )
 }
 
 ///|

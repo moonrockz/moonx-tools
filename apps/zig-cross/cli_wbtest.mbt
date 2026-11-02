@@ -28,7 +28,7 @@ test "parse_args build errors" {
   assert_eq(
     parse_args(["build", "nope"]),
     Err(
-      "unknown target: nope (expected one of linux-x64, linux-arm64, darwin-arm64, darwin-x64, windows-x64, host)",
+      "unknown target: nope (expected one of linux-x64, linux-arm64, darwin-arm64, darwin-x64, windows-x64, windows-arm64, host)",
     ),
   )
   assert_eq(
@@ -38,6 +38,27 @@ test "parse_args build errors" {
   assert_eq(
     parse_args(["build", "--bogus", "host"]),
     Err("unknown option: --bogus"),
+  )
+}
+
+///|
+test "doctor defaults to all seven targets in order" {
+  assert_eq(
+    parse_args(["doctor"]),
+    Ok(
+      Doctor(
+        targets=[
+          LinuxX64,
+          LinuxArm64,
+          DarwinArm64,
+          DarwinX64,
+          WindowsX64,
+          WindowsArm64,
+          Host,
+        ],
+        json=false,
+      ),
+    ),
   )
 }
 

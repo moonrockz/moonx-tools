@@ -7,6 +7,7 @@ pub(all) enum Target {
   DarwinArm64
   DarwinX64
   WindowsX64
+  WindowsArm64
   Host
 } derive(Eq, Debug)
 
@@ -14,7 +15,8 @@ pub(all) enum Target {
 /// The target names, in the order that the usage text shows them.
 fn all_target_names() -> Array[String] {
   [
-    "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "windows-x64", "host",
+    "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "windows-x64", "windows-arm64",
+    "host",
   ]
 }
 
@@ -26,6 +28,7 @@ pub fn Target::parse(text : String) -> Target? {
     "darwin-arm64" => Some(DarwinArm64)
     "darwin-x64" => Some(DarwinX64)
     "windows-x64" => Some(WindowsX64)
+    "windows-arm64" => Some(WindowsArm64)
     "host" => Some(Host)
     _ => None
   }
@@ -39,6 +42,7 @@ pub fn Target::name(self : Target) -> String {
     DarwinArm64 => "darwin-arm64"
     DarwinX64 => "darwin-x64"
     WindowsX64 => "windows-x64"
+    WindowsArm64 => "windows-arm64"
     Host => "host"
   }
 }
@@ -52,8 +56,14 @@ pub fn zig_triple(target : Target) -> String? {
     DarwinArm64 => Some("aarch64-macos")
     DarwinX64 => Some("x86_64-macos")
     WindowsX64 => Some("x86_64-windows-gnu")
+    WindowsArm64 => Some("aarch64-windows-gnu")
     Host => None
   }
+}
+
+///|
+fn is_windows(target : Target) -> Bool {
+  target == WindowsX64 || target == WindowsArm64
 }
 
 ///|

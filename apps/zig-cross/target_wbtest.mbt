@@ -5,18 +5,72 @@ test "zig_triple maps each target" {
   assert_eq(zig_triple(DarwinArm64), Some("aarch64-macos"))
   assert_eq(zig_triple(DarwinX64), Some("x86_64-macos"))
   assert_eq(zig_triple(WindowsX64), Some("x86_64-windows-gnu"))
+  assert_eq(zig_triple(WindowsArm64), Some("aarch64-windows-gnu"))
   assert_eq(zig_triple(Host), None)
 }
 
 ///|
-test "Target::parse accepts the six names and nothing else" {
+test "Target::parse accepts the seven names and nothing else" {
   assert_eq(Target::parse("linux-x64"), Some(LinuxX64))
   assert_eq(Target::parse("linux-arm64"), Some(LinuxArm64))
   assert_eq(Target::parse("darwin-arm64"), Some(DarwinArm64))
   assert_eq(Target::parse("darwin-x64"), Some(DarwinX64))
   assert_eq(Target::parse("windows-x64"), Some(WindowsX64))
+  assert_eq(Target::parse("windows-arm64"), Some(WindowsArm64))
   assert_eq(Target::parse("host"), Some(Host))
   assert_eq(Target::parse("freebsd-x64"), None)
+}
+
+///|
+test "Windows targets have names and a shared predicate" {
+  assert_eq(WindowsArm64.name(), "windows-arm64")
+  assert_eq(all_target_names(), [
+    "linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "windows-x64", "windows-arm64",
+    "host",
+  ])
+  for name in all_target_names() {
+    let target = Target::parse(name).unwrap()
+    assert_eq(is_windows(target), name.has_prefix("windows-"))
+  }
+}
+
+///|
+test "Windows arm64 wrappers set the triple and filter host objects without header fixes" {
+  let cc = cc_wrapper(WindowsArm64)
+  assert_true(cc.contains("-target aarch64-windows-gnu -D_CRT_RAND_S"))
+  for
+    arg in [
+      "-DMOONBIT_USE_SIMDUTF", "*/moonbit_simdutf.o", "*/simdutf.o", "*/libbacktrace.a",
+    ] {
+    assert_true(cc.contains(arg))
+  }
+  assert_false(cc.contains("-include"))
+  assert_false(cc.contains("-idirafter"))
+  assert_false(cc.contains("-DNAME_MAX"))
+  let ar = ar_wrapper(WindowsArm64)
+  assert_true(ar.contains("*/moonbit_simdutf.o"))
+  assert_true(ar.contains("*/simdutf.o"))
+  assert_true(ar.contains("exec zig ar"))
+}
+
+///|
+#cfg(target="native")
+async test "Windows arm64 wrappers execute with filtered arguments" {
+  let dir = "_build/zig-cross-test"
+  @fs.mkdir(dir, recursive=true, allow_exist=true)
+  assert_eq(
+    run_wrapper(dir + "/cc-arm64", cc_wrapper(WindowsArm64), [
+      "-c", "a.c", "-DMOONBIT_USE_SIMDUTF", "x/moonbit_simdutf.o", "y/simdutf.o",
+      "z/libbacktrace.a", "-o", "out",
+    ]),
+    "cc -target aarch64-windows-gnu -D_CRT_RAND_S -c a.c -o out\n",
+  )
+  assert_eq(
+    run_wrapper(dir + "/ar-arm64", ar_wrapper(WindowsArm64), [
+      "rcs", "lib.a", "m.o", "p/moonbit_simdutf.o", "q/simdutf.o", "n.o",
+    ]),
+    "ar rcs lib.a m.o n.o\n",
+  )
 }
 
 ///|

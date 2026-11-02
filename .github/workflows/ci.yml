@@ -15,6 +15,31 @@ env:
   MISE_EXPERIMENTAL: 'true'
 
 jobs:
+  windows-host:
+    name: Windows host
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install mise and the pinned toolchain
+        uses: ./.github/actions/setup
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lint
+        run: mise run lint
+      - name: Validate
+        run: mise run validate
+      - name: Test task scripts
+        run: mise run test:scripts
+      - name: Test
+        run: mise run test
+      - name: Build
+        run: mise run build
+
   lint:
     name: Lint and validate
     runs-on: ubuntu-latest
@@ -186,14 +211,15 @@ jobs:
               if data[lfanew:lfanew+4] != b"PE\x00\x00":
                   fail(f"{target}: missing PE signature at {lfanew}")
               (machine,) = struct.unpack_from("<H", data, lfanew+4)
-              if machine != 0x8664:
-                  fail(f"{target}: expected PE machine 34404, found {machine}")
+              expected = 0xAA64 if target == "windows-arm64" else 0x8664
+              if machine != expected:
+                  fail(f"{target}: expected PE machine {expected}, found {machine}")
               print(f"OK {target}: PE machine {machine}")
           PY
 
   # The sync runtime is assessed only for MoonBit 0.10.17+d971670cd, which is older than the pin.
   # The pinned toolchain runs zig-cross; test:doctor gives the 0.10.17 home to the zig-cross
-  # children and runs the sync contracts, all five target headers included.
+  # children and runs the sync contracts, all six target headers included.
   sync-moonbit-0-10-17:
     name: Sync runtime (MoonBit 0.10.17, ${{ matrix.os }})
     needs: [lint]
@@ -227,6 +253,18 @@ jobs:
       - name: Run the doctor and sync runtime contracts
         run: mise run test:doctor
 
+      - name: Verify the embedded PE check against the arm64 consumer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys, textwrap
+          workflow = pathlib.Path('.github/workflows/ci.yml').read_text()
+          check = workflow.split('          import struct, sys\n', 1)[1].split('          PY\n', 1)[0]
+          binary = next(pathlib.Path('_build/cross-sync/windows-arm64').rglob('*.exe'))
+          sys.argv = ['check-header', str(binary), 'windows-arm64']
+          exec('import struct, sys\n' + textwrap.dedent(check))
+          PY
+
   # The only check that branch protection needs. Add every new job to `needs`.
   # `if: always()` is required: without it this job is skipped when a needed job fails, and
   # GitHub counts a skipped required check as passed.
@@ -235,12 +273,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [lint, build, test, consumer, sync-moonbit-0-10-17, test-native-zig, test-scripts]
+    needs: [lint, build, test, consumer, sync-moonbit-0-10-17, test-native-zig, test-scripts, windows-host]
     steps:
       - name: Require every selected job to succeed
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           jq -e 'keys == ["build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
-            "test-scripts"]
+            "test-scripts", "windows-host"]
             and all(.[]; .result == "success")' <<<"$NEEDS"

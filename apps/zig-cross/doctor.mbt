@@ -435,12 +435,13 @@ fn report(
         )
       }
     }
-    if targets.contains(WindowsX64) {
+    let windows = targets.filter(is_windows)
+    if !windows.is_empty() {
       findings.push(
         finding(
           "ZC_WINDOWS_OSSTRING",
           "warning",
-          ["windows-x64"],
+          windows.map(t => t.name()),
           "Cross-built Windows code using OsString can mishandle arguments, environment variables and paths. A valid PE header does not prove runtime correctness.",
           "Moon platform cfg and bundled core follow the Linux/macOS host; remains unverified for unknown versions",
           ["https://github.com/moonbitlang/moon/issues/2320"],

@@ -31,7 +31,7 @@ pub fn help_text() -> String {
     #|Windows: OsString arguments, environment variables and paths may be incorrect.
     #|Build Windows programs using OsString on Windows. Header checks are insufficient.
     #|
-    #|Targets: linux-x64, linux-arm64, darwin-arm64, darwin-x64, windows-x64, host
+    #|Targets: linux-x64, linux-arm64, darwin-arm64, darwin-x64, windows-x64, windows-arm64, host
     #|Zig 0.17.0 must be on PATH. zig-cross runs on Linux and macOS only.
   )
 }

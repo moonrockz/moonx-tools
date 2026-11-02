@@ -16,6 +16,54 @@ fn stock_environment(mode : String) -> Environment {
 }
 
 ///|
+test "Windows arm64 retains its OsString warning alone and in sync mode" {
+  for mode in ["full", "sync"] {
+    let result = report(stock_environment(mode), [WindowsArm64])
+    let warnings = result.findings.filter(f => f.code == "ZC_WINDOWS_OSSTRING")
+    assert_eq(warnings.length(), 1)
+    assert_eq(warnings[0].targets, ["windows-arm64"])
+    assert_eq(warnings[0].severity, "warning")
+  }
+}
+
+///|
+test "one Windows warning lists only requested Windows targets in request order" {
+  for
+    targets in [
+      [WindowsX64, WindowsArm64, LinuxX64],
+      [WindowsArm64, LinuxX64, WindowsX64],
+    ] {
+    let warnings = report(stock_environment("full"), targets).findings.filter(f => {
+      f.code == "ZC_WINDOWS_OSSTRING"
+    })
+    assert_eq(warnings.length(), 1)
+    assert_eq(
+      warnings[0].targets,
+      targets.filter(is_windows).map(t => t.name()),
+    )
+  }
+}
+
+///|
+test "Windows arm64 full runtime reports the MSVC blocker and no header flags" {
+  let env = stock_environment("full")
+  let result = report(env, [WindowsArm64])
+  assert_eq(result.status, "error")
+  let blockers = result.findings.filter(f => f.code == "ZC_WINDOWS_MSVC_RUNTIME")
+  assert_eq(blockers.length(), 1)
+  assert_eq(blockers[0].severity, "error")
+  assert_eq(blockers[0].targets, ["windows-arm64"])
+  assert_true(
+    blockers[0].next_steps.any(step => {
+      step.command ==
+      "ZIG_CROSS_RUNTIME=sync zig-cross build windows-arm64 -- <package-path>"
+    }),
+  )
+  assert_eq(header_flags(WindowsArm64, env, "/w"), [])
+  assert_eq(header_flags(WindowsArm64, stock_environment("sync"), "/w"), [])
+}
+
+///|
 test "doctor parser defaults deduplicates and rejects unsupported forms" {
   assert_eq(
     parse_args(["doctor", "--json", "host", "host", "linux-x64"]),
@@ -28,7 +76,7 @@ test "doctor parser defaults deduplicates and rejects unsupported forms" {
   guard parse_args(["doctor"]) is Ok(Doctor(targets~, json~)) else {
     abort("doctor")
   }
-  assert_eq(targets.length(), 6)
+  assert_eq(targets.length(), 7)
   assert_false(json)
   assert_true(parse_args(["doctor", "--"]) is Err(_))
   assert_true(parse_args(["doctor", "--bogus", "--json"]) is Err(_))

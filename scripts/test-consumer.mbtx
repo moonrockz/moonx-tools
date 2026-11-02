@@ -20,7 +20,7 @@ import {
 /// 4. The full runtime cross-builds `apps/zig-cross` for the Linux and macOS targets, on Linux and
 ///    macOS hosts, without a macOS SDK.
 /// 5. `test:doctor` checks the doctor and runtime contracts. It also runs the sync runtime
-///    contracts, all five target headers included, when `ZIG_CROSS_SYNC_MOON_HOME` names the
+///    contracts, all six target headers included, when `ZIG_CROSS_SYNC_MOON_HOME` names the
 ///    assessed MoonBit 0.10.17 home.
 ///
 /// Usage: `mise run test:consumer`, or `moonx scripts/test-consumer.mbtx`.

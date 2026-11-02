@@ -4,7 +4,7 @@ Command-line tools for MoonBit, runnable with moonx.
 ## Tools
 
 - [`apps/zig-cross`](apps/zig-cross/README.md) — `moonrockz/zig-cross`: cross-compile MoonBit native
-  binaries with zig (`linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`, `host`).
+  binaries with zig (`linux-x64`, `linux-arm64`, `darwin-arm64`, `darwin-x64`, `windows-x64`, `windows-arm64`, `host`).
   Moved from [moonrockz/smithy](https://github.com/moonrockz/smithy) with no CLI changes.
 
 - [`apps/pubman`](apps/pubman/README.md): `moonrockz/pubman` packages and verifies
@@ -68,8 +68,9 @@ moonx moonrockz/zig-cross@<version> --help
 
 Run `doctor` before choosing a target or upgrading MoonBit. It emits stable codes and actionable steps for users and agents. Full-runtime Linux and local macOS header fixes are version-bounded. `ZIG_CROSS_RUNTIME=sync` is an explicit experimental subset for cross-target consumers that do not need the new asynchronous runtime APIs. See the [compatibility contract](apps/zig-cross/README.md#moonbit-01017-compatibility).
 
-Windows note: a `windows-x64` binary that zig cross-builds is wrong for MoonBit code
+Windows note: a `windows-x64` or `windows-arm64` binary that zig cross-builds is wrong for MoonBit code
 that uses `OsString` (see `apps/zig-cross/README.md`). Build Windows binaries on Windows.
+Both Windows targets are checked for linking and headers only. That does not prove runtime correctness.
 `zig-cross` itself runs on Linux/macOS only.
 
 ## Planning changes with OpenSpec
