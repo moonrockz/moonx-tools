@@ -374,37 +374,39 @@ async fn gate_contract(root : String) -> Unit {
     abort("missing CI gate expression")
   }
   let expression = tail[:end].to_owned()
-  for state in ["success", "failure", "cancelled", "skipped", "missing"] {
-    let needs : Map[String, Json] = Map([])
-    for
-      key in [
-        "build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
-        "test-scripts",
-      ] {
-      if key == "consumer" && state == "missing" {
-        continue
+  for checked_job in ["consumer", "windows-host"] {
+    for state in ["success", "failure", "cancelled", "skipped", "missing"] {
+      let needs : Map[String, Json] = Map([])
+      for
+        key in [
+          "build", "consumer", "lint", "sync-moonbit-0-10-17", "test", "test-native-zig",
+          "test-scripts", "windows-host",
+        ] {
+        if key == checked_job && state == "missing" {
+          continue
+        }
+        needs[key] = {
+          "result": if key == checked_job {
+            state
+          } else {
+            "success"
+          },
+        }
       }
-      needs[key] = {
-        "result": if key == "consumer" {
-          state
-        } else {
-          "success"
-        },
-      }
+      let (code, _, _) = call(
+        "jq",
+        [
+          "-n",
+          "-e",
+          "--argjson",
+          "needs",
+          Json::object(needs).stringify(),
+          "$needs | " + expression,
+        ],
+        root,
+      )
+      assert_eq(code == 0, state == "success")
     }
-    let (code, _, _) = call(
-      "jq",
-      [
-        "-n",
-        "-e",
-        "--argjson",
-        "needs",
-        Json::object(needs).stringify(),
-        "$needs | " + expression,
-      ],
-      root,
-    )
-    assert_eq(code == 0, state == "success")
   }
   let release = @fs.read_file(root + "/.github/workflows/release.yml").text()
   assert_true(release.contains("run: mise run test:pubman"))
