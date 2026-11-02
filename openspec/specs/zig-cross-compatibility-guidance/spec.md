@@ -97,7 +97,7 @@ Build and exec SHALL emit applicable compatibility warnings and any active worka
 
 #### Scenario: Explicit synchronous consumer build
 - **WHEN** an eligible toolchain runs a sync-mode build
-- **THEN** all five target formats can be built and checked without macOS SDK headers
+- **THEN** all six cross target formats can be built and checked without macOS SDK headers
 - **AND** diagnostics identify the mode as experimental and list excluded runtime functionality
 
 #### Scenario: Excluded functionality
@@ -149,3 +149,27 @@ In full runtime mode on a Linux or macOS host, the `cc` wrapper SHALL make the u
 - **WHEN** an unassessed toolchain runs in full runtime mode for linux-arm64 and darwin-x64
 - **THEN** the wrapper applies the header fix
 - **AND** the `ZC_TOOLCHAIN_UNVERIFIED` message names those targets and the fix, and doctor does not report `ZC_LINUX_NAME_MAX`
+
+### Requirement: Windows findings cover every Windows target
+
+Doctor, build and exec SHALL apply the Windows findings to every requested Windows target, `windows-x64` and `windows-arm64`. `ZC_WINDOWS_OSSTRING` SHALL be one finding whose targets are the requested Windows targets. In full runtime mode with an assessed toolchain, each Windows target SHALL get its own `ZC_WINDOWS_MSVC_RUNTIME` error finding.
+
+#### Scenario: Doctor on windows-arm64 in sync mode
+- **WHEN** an agent invokes `ZIG_CROSS_RUNTIME=sync zig-cross doctor windows-arm64 --json` with an eligible toolchain
+- **THEN** the report has `ZC_COMPATIBILITY_MODE` and a `ZC_WINDOWS_OSSTRING` warning whose targets are `["windows-arm64"]`
+- **AND** the process exits with status 0
+
+#### Scenario: Both Windows targets requested
+- **WHEN** a user invokes `zig-cross doctor windows-x64 windows-arm64 linux-x64`
+- **THEN** the report has exactly one `ZC_WINDOWS_OSSTRING` finding, with targets `windows-x64` and `windows-arm64`
+- **AND** `linux-x64` is not among its targets
+
+#### Scenario: Full runtime for windows-arm64
+- **WHEN** a user invokes `zig-cross doctor windows-arm64` with an assessed toolchain and no `ZIG_CROSS_RUNTIME`
+- **THEN** the report has a `ZC_WINDOWS_MSVC_RUNTIME` error for `windows-arm64` whose next steps name `ZIG_CROSS_RUNTIME=sync zig-cross build windows-arm64 -- <package-path>`
+- **AND** the process exits with status 1
+
+#### Scenario: windows-arm64 build keeps the warning
+- **WHEN** a `windows-arm64` build produces an executable with a matching PE header
+- **THEN** stderr contains the `ZC_WINDOWS_OSSTRING` warning for `windows-arm64`
+- **AND** the tool does not describe the header check as proof that arguments, paths or environment handling are correct
