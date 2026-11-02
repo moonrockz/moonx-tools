@@ -11,7 +11,7 @@ Verified on the contributor checkout at `C:/Users/damre/code/repos/github/moonro
 - 1.5: the new feature failed on the Windows pubman case before the skip predicate was implemented. `test:scripts` then passed; `test` passed on all four backends with the required skip lines.
 - 1.6: each host guard exited 1 with its task name and host requirement. Comparing file inventories before and after showed no new `_build` files. `build:cross -- linux-x64` exited 1 with zig-cross's existing host error.
 - 1.7: `moon test fixtures/pubman-consumer --target native` passed from the real checkout path. No extra skip was added.
-- 1.8–1.9: documented setup, check and LF refresh commands were exercised. Strict validation, format and the full check passed. MoonBit 0.10.18's new default interface generation required `moon check --no-mbti`; lint still uses `--deny-warn` and leaves no generated files.
+- 1.8 and 1.9: documented setup, check and LF refresh commands were exercised. Strict validation, format and the full check passed. MoonBit 0.10.18's new default interface generation required `moon check --no-mbti`; lint still uses `--deny-warn` and leaves no generated files.
 
 ## Feasibility gate
 
@@ -45,3 +45,9 @@ Native target and wrapper execution passed in [CI job 125044809351](https://gith
 [Ubuntu sync job 125044809263](https://github.com/moonrockz/moonx-tools/actions/runs/41372134626/job/125044809263) passed the matching/mismatched arm64 PE fixtures, sync doctor assertions, six-target consumer build and embedded Python check. Its summary has a passing windows-arm64 row; Python prints `OK windows-arm64: PE machine 43620`.
 
 The first consumer jobs exposed a gate fixture that still listed the old job set. The fixture now includes windows-host and checks success, failure, cancellation, skip and missing results separately for both consumer and Windows jobs. Running the checked-in jq gate against all ten cases locally passed. The actual gate was not weakened.
+
+[macOS sync job 125044809326](https://github.com/moonrockz/moonx-tools/actions/runs/41372134626/job/125044809326) also passed all six headers and printed the expected arm64 Python result. Both Unix hosts completed the toolchain through the post-install hook.
+
+[CI run 41372356316](https://github.com/moonrockz/moonx-tools/actions/runs/41372356316) passed all 17 jobs, including ci-ok and windows-host, after the gate fixture fix.
+
+[Ubuntu sync consumer job 125046505090](https://github.com/moonrockz/moonx-tools/actions/runs/41372690218/job/125046505090) then passed the full `mise run test:consumer` entry point with the separate assessed home, a passing windows-arm64 summary row, and the embedded Python check. All 27 task verifications have now passed. The final PR head must independently have all checks green before merge.

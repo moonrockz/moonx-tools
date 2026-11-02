@@ -52,13 +52,13 @@
 
 ## 5. Consumer and zig-cross CI validation
 
-- [ ] 5.1 Add `windows-arm64` to the sync-mode consumer build in `scripts/test-doctor.mbtx`, invoked by `scripts/test-consumer.mbtx`, and rename the step "All six cross target headers with the explicit sync runtime". Verify with `mise run test:consumer` with `ZIG_CROSS_SYNC_MOON_HOME` pointing to the assessed 0.10.17 home on a Linux or macOS host or in the CI sync-runtime jobs: the summary shows a passing `windows-arm64` row.
+- [x] 5.1 Add `windows-arm64` to the sync-mode consumer build in `scripts/test-doctor.mbtx`, invoked by `scripts/test-consumer.mbtx`, and rename the step "All six cross target headers with the explicit sync runtime". Verify with `mise run test:consumer` with `ZIG_CROSS_SYNC_MOON_HOME` pointing to the assessed 0.10.17 home on a Linux or macOS host or in the CI sync-runtime jobs: the summary shows a passing `windows-arm64` row.
 - [x] 5.2 Change the `windows-` branch of the PE check in `.github/workflows/ci.yml` to expect `0xAA64` for `windows-arm64` and `0x8664` for `windows-x64`. Verify by running the embedded Python against the arm64 binary from 5.1 with target `windows-arm64`. It should print `OK windows-arm64: PE machine 43620`.
 
 ## 6. Windows CI job
 
 - [x] 6.1 Make `.github/actions/setup/action.yml` work on Windows runners: use `shell: pwsh` steps when `runner.os == 'Windows'` to install mise, put its shims and the MoonBit bin directory on `GITHUB_PATH`, and set `MOON_HOME`. Add a `windows-host` job on `windows-11-arm` with a 30-minute timeout that runs `mise run lint`, `validate`, `test:scripts`, `test` and `build`, and add it to `ci-ok`'s `needs`. Verify on a pushed branch that the job passes and its log shows the skip lines. If the runner image cannot run it, switch to `windows-latest` and record why in design.md.
-- [ ] 6.2 Verify that the Ubuntu and macOS jobs pass with the toolchain completed by the post-install hook and without the removed bash step.
+- [x] 6.2 Verify that the Ubuntu and macOS jobs pass with the toolchain completed by the post-install hook and without the removed bash step.
 
 ## 7. Integration checks
 
@@ -66,7 +66,7 @@
 - [x] 7.2 Run `mise run lint` and `mise run validate` and verify that both pass.
 - [x] 7.3 Run `mise run check` and `mise run test:scripts` on the Windows arm64 machine and verify that both pass.
 - [x] 7.4 Run `openspec validate --all --strict` and verify that it passes.
-- [ ] 7.5 Push the branch and verify that every CI job passes and `ci-ok` is green: lint, build, test, the consumer jobs and the MoonBit 0.10.17 sync-runtime jobs on `ubuntu-latest` and `macos-latest` with the `windows-arm64` sync build, pinned MoonBit 0.10.18, native-zig, scripts, and `windows-host`.
+- [x] 7.5 Push the branch and verify that every CI job passes and `ci-ok` is green: lint, build, test, the consumer jobs and the MoonBit 0.10.17 sync-runtime jobs on `ubuntu-latest` and `macos-latest` with the `windows-arm64` sync build, pinned MoonBit 0.10.18, native-zig, scripts, and `windows-host`.
 
 ## Workflow follow-up
 
