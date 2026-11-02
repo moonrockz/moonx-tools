@@ -51,3 +51,5 @@ The first consumer jobs exposed a gate fixture that still listed the old job set
 [CI run 41372356316](https://github.com/moonrockz/moonx-tools/actions/runs/41372356316) passed all 17 jobs, including ci-ok and windows-host, after the gate fixture fix.
 
 [Ubuntu sync consumer job 125046505090](https://github.com/moonrockz/moonx-tools/actions/runs/41372690218/job/125046505090) then passed the full `mise run test:consumer` entry point with the separate assessed home, a passing windows-arm64 summary row, and the embedded Python check. All 27 task verifications have now passed. The final PR head must independently have all checks green before merge.
+
+The final implementation head 2aa8bbb passed all 17 jobs in [CI run 41373132277](https://github.com/moonrockz/moonx-tools/actions/runs/41373132277), including Windows host and ci-ok. [Release dry-run 41373132224](https://github.com/moonrockz/moonx-tools/actions/runs/41373132224) also passed validation and skipped publication. [Implementation PR #18](https://github.com/moonrockz/moonx-tools/pull/18) was squash-merged as f2f08c7 before this archive follow-up.
