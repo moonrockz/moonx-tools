@@ -18,7 +18,7 @@ The repository's own tasks also fail on a Windows arm64 machine before they star
   - `ZC_WINDOWS_OSSTRING` lists every requested Windows target.
   - `ZC_WINDOWS_MSVC_RUNTIME` is reported for `windows-arm64` in full runtime mode. It is an error, as it is for `windows-x64`.
 - `windows-arm64` gets the same `cc` and `ar` wrappers as the other cross targets (`-D_CRT_RAND_S`, simdutf and libbacktrace filtering). It gets no header fix.
-- The consumer test builds `windows-arm64` with `ZIG_CROSS_RUNTIME=sync` and checks its PE header, next to the five existing targets.
+- The consumer contract in `test-doctor.mbtx` builds `windows-arm64` with `ZIG_CROSS_RUNTIME=sync` and checks its PE header, next to the five existing targets.
 
 ### Windows development hosts
 
@@ -69,3 +69,5 @@ Out of scope:
 - `.github/actions/setup/action.yml` (bash completion step removed, Windows support), `.github/workflows/ci.yml` (Windows job, PE check).
 - `README.md`, `apps/zig-cross/README.md`, `AGENTS.md`, and the `context` in `openspec/config.yaml`.
 - No new MoonBit dependencies and no change to the release workflow.
+
+The repository pin remains MoonBit 0.10.18+6c83a7f62. Sync builds retain the separately installed assessed 0.10.17 toolchain and its existing eligibility checks. Windows setup and general repository checks use the current pin.

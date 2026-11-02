@@ -2,7 +2,7 @@
 
 ## 1. Windows host setup
 
-- [ ] 1.1 Add `windows-arm64` under `[tools."http:moonbit".platforms]` in `.config/mise/config.toml`, with the `windows-x64` URL and `format = "zip"`, plus a comment explaining the x64 emulation choice. On the Windows arm64 machine, delete the temporary `.config/mise/config.local.toml`, run `mise install`, and verify that it succeeds and that `mise exec -- moon version --all` reports `0.10.17+d971670cd`.
+- [ ] 1.1 Add `windows-arm64` under `[tools."http:moonbit".platforms]` in `.config/mise/config.toml`, with the `windows-x64` URL and `format = "zip"`, plus a comment explaining the x64 emulation choice. On the Windows arm64 machine, delete the temporary `.config/mise/config.local.toml`, run `mise install`, and verify that it succeeds and that `mise exec -- moon version --all` reports `0.10.18+6c83a7f62`.
 - [ ] 1.2 Add `scripts/bootstrap/complete-moonbit.ps1` and `scripts/bootstrap/complete-moonbit.sh` as in design.md: link or install `moonx`, unpack and bundle the core library, run `moon update`, and fail on any error. Add a `postinstall` to the `http:moonbit` tool that picks the script with mise's `os()` template and resolves its path from the config root. Remove the "Complete the MoonBit toolchain" step and the `moon update` from `.github/actions/setup/action.yml`. Verify on the Windows machine: `mise uninstall http:moonbit` followed by `mise install` leaves `lib/core` bundled, `bin/moonx.exe` present and a registry index, and `mise run validate:versions` passes. Verify the failure path with a scratch config pointing at a missing core version: `mise install` exits nonzero and names the failed download.
 - [ ] 1.3 With `MOON_HOME` unset and an older MoonBit present in `~/.moon`, find out which core library and registry `mise exec -- moon` uses. If it is not the mise install, set `MOON_HOME` in mise's `[env]` from the tool's install path. Verify that `mise run lint:moonbit` compiles against the mise install's core, for example by temporarily giving the mise core a marker that a compile picks up, without changing `~/.moon`.
 - [ ] 1.4 Add `.gitattributes` with `* text=auto eol=lf`. Verify that `git add --renormalize .` stages nothing. Then, in a fresh clone made with `core.autocrlf=true` (and `core.longpaths=true` if the path is long), verify that `git ls-files --eol` shows `w/lf` for text files and that `mise run lint:yaml` and `mise run test:scripts` pass there.
@@ -19,7 +19,7 @@
 
 ## 2. Feasibility gate
 
-- [ ] 2.1 With Zig 0.17.0 and the runtime sources of the pinned MoonBit (`$(mise where http:moonbit)/lib/runtime`), compile the six sync units (`runtime.c`, `env.c`, `sync_io.c`, `utf.c`, `backtrace.c`, `c_buffer.c`) with `zig cc -target aarch64-windows-gnu -D_CRT_RAND_S -c`. Link a small C program that calls `moonbit_make_string` against them. Verify that every compile and the link exit 0, that the output's PE machine is `0xAA64`, and, on a Windows arm64 machine, that the program runs and exits 0. If any step fails, stop and revise this change before continuing.
+- [ ] 2.1 With Zig 0.17.0 and the runtime sources of both the pinned MoonBit 0.10.18 (`$(mise where http:moonbit)/lib/runtime`) and the separately installed assessed MoonBit 0.10.17, compile the six sync units (`runtime.c`, `env.c`, `sync_io.c`, `utf.c`, `backtrace.c`, `c_buffer.c`) with `zig cc -target aarch64-windows-gnu -D_CRT_RAND_S -c`. Link a small C program that calls `moonbit_make_string` against them. Verify that every compile and the link exit 0, that the output's PE machine is `0xAA64`, and, on a Windows arm64 machine, that the program runs and exits 0. If any step fails, stop and revise this change before continuing.
 
 ## 3. Target table and executable format
 
@@ -52,7 +52,7 @@
 
 ## 5. Consumer and zig-cross CI validation
 
-- [ ] 5.1 Add `windows-arm64` to the sync-mode build in `scripts/test-consumer.mbtx`, and rename the step "All six cross target headers with the explicit sync runtime". Verify with `mise run test:consumer` on a Linux or macOS host or in the CI consumer jobs: the summary shows a passing `windows-arm64` row.
+- [ ] 5.1 Add `windows-arm64` to the sync-mode consumer build in `scripts/test-doctor.mbtx`, invoked by `scripts/test-consumer.mbtx`, and rename the step "All six cross target headers with the explicit sync runtime". Verify with `mise run test:consumer` with `ZIG_CROSS_SYNC_MOON_HOME` pointing to the assessed 0.10.17 home on a Linux or macOS host or in the CI sync-runtime jobs: the summary shows a passing `windows-arm64` row.
 - [ ] 5.2 Change the `windows-` branch of the PE check in `.github/workflows/ci.yml` to expect `0xAA64` for `windows-arm64` and `0x8664` for `windows-x64`. Verify by running the embedded Python against the arm64 binary from 5.1 with target `windows-arm64`. It should print `OK windows-arm64: PE machine 43620`.
 
 ## 6. Windows CI job
@@ -66,7 +66,7 @@
 - [ ] 7.2 Run `mise run lint` and `mise run validate` and verify that both pass.
 - [ ] 7.3 Run `mise run check` and `mise run test:scripts` on the Windows arm64 machine and verify that both pass.
 - [ ] 7.4 Run `openspec validate --all --strict` and verify that it passes.
-- [ ] 7.5 Push the branch and verify that every CI job passes and `ci-ok` is green: lint, build, test, the consumer jobs on `ubuntu-latest` and `macos-latest` with the `windows-arm64` sync build, MoonBit 0.10.18, native-zig, scripts, and `windows-host`.
+- [ ] 7.5 Push the branch and verify that every CI job passes and `ci-ok` is green: lint, build, test, the consumer jobs and the MoonBit 0.10.17 sync-runtime jobs on `ubuntu-latest` and `macos-latest` with the `windows-arm64` sync build, pinned MoonBit 0.10.18, native-zig, scripts, and `windows-host`.
 
 ## Workflow follow-up
 

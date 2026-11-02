@@ -10,7 +10,7 @@ zig-cross is a MoonBit CLI run with `moonx`. It builds for the `wasm` backend in
 - `ZC_WINDOWS_OSSTRING` is gated on `targets.contains(WindowsX64)` and hard-codes `["windows-x64"]`.
 - `header_flags` returns no flags for any target that is not Linux or darwin, so Windows targets already get no header fix.
 
-Only sync mode builds Windows targets today. `scripts/test-consumer.mbtx` builds the consumer fixture for all five cross targets with `ZIG_CROSS_RUNTIME=sync` on the Ubuntu and macOS CI runners, and zig-cross checks each header as part of that build.
+Only sync mode builds Windows targets today. `scripts/test-doctor.mbtx`, also invoked by `scripts/test-consumer.mbtx`, builds the consumer fixture for all five cross targets with `ZIG_CROSS_RUNTIME=sync` using the separately installed assessed 0.10.17 home on the Ubuntu and macOS CI sync-runtime runners, and zig-cross checks each header as part of that build.
 
 Probe result (2026-10-31, Windows arm64 machine, Zig 0.17.0, MoonBit 0.10.15 runtime): `runtime.c`, `env.c`, `sync_io.c`, `utf.c` and `backtrace.c` compile with `-target aarch64-windows-gnu -D_CRT_RAND_S`. A small C program linked against them produced PE machine `0xAA64`, ran natively, and allocated and freed a MoonBit string. This was not the 0.10.17 pin, and `c_buffer.c` was not tested.
 
@@ -66,7 +66,7 @@ Observed on 2026-10-31 on a Windows 11 arm64 machine (Snapdragon X Elite), Zig 0
 **Expected header `Pe(0xAA64)`.** `0xAA64` is IMAGE_FILE_MACHINE_ARM64. ARM64EC (`0xA641`) and ARM64X binaries do not count as a match, since Zig does not produce them for this triple.
 
 **Validation in existing scripts.** No new script or mise task for the target:
-- `scripts/test-consumer.mbtx` adds `windows-arm64` to the sync build list. Both CI consumer jobs (Ubuntu, macOS) then link it and check its header through zig-cross itself.
+- `scripts/test-doctor.mbtx` adds `windows-arm64` to the sync consumer build list. Both CI sync-runtime jobs (Ubuntu, macOS) then link it and check its header through zig-cross itself.
 - `scripts/test-doctor.mbtx` adds a fake `0xAA64` PE fixture under `windows-arm64` (build passes and warns with `ZC_WINDOWS_OSSTRING`) and a `0x8664` fixture under `windows-arm64` (build exits 1). This covers the mismatch case without a real toolchain.
 - The Python PE check in `ci.yml` checks only `matrix.cross` (Linux targets today). Its `windows-` branch hard-codes `0x8664`. Change it to pick the machine by target, so it stays correct if a matrix entry ever uses a Windows target.
 
@@ -102,12 +102,16 @@ The skip is per suite, not per test, so the white-box tests stay unchanged. The 
 
 ## Risks / Trade-offs
 
-- [The 0.10.17 sync runtime, or `c_buffer.c`, does not link for `aarch64-windows-gnu`] → Task 2.1 compiles and links the pinned runtime directly with `zig cc` before any zig-cross code changes. It works on this Windows machine and does not need zig-cross. If it fails, stop and revise this change instead of shipping a target that cannot build.
+- [The 0.10.17 sync runtime, or `c_buffer.c`, does not link for `aarch64-windows-gnu`] → Task 2.1 compiles and links both the pinned 0.10.18 runtime and the assessed 0.10.17 runtime directly with `zig cc` before any zig-cross code changes. It works on this Windows machine and does not need zig-cross. If it fails, stop and revise this change instead of shipping a target that cannot build.
 - [Users read a passing header check as a working arm64 binary] → `ZC_WINDOWS_OSSTRING` names `windows-arm64`, and the README states that Windows targets are checked for linking and headers only.
 - [The default `doctor` report gains a seventh target] → This adds to the report and does not change any existing finding. Agents that compare full target lists see one more name. The proposal records this.
-- [The MoonBit 0.10.18 cross job in CI does not build Windows] → It covers the full runtime, which Windows cannot build. Leave it unchanged.
+- [The pinned MoonBit 0.10.18 cannot use sync mode] → Preserve its refusal and the separate assessed 0.10.17 sync-runtime CI jobs. The consumer jobs keep testing the full runtime for Linux and macOS.
 - [mise's `os()` template or `postinstall` behaves differently on Linux and macOS runners] → Task 1.2 verifies a fresh `mise install` on this machine. Task 6.2 verifies the Ubuntu and macOS CI jobs once the bash step is gone. Any failure shows in `ci-ok`.
 - [The `windows-11-arm` runner image lacks MSVC, or `mise` cannot run there] → Task 6.1 runs the job on a branch before it becomes required. If the image falls short, fall back to `windows-latest`. It runs the same x64 toolchain, but without emulation.
 - [x64 emulation makes the Windows job slow] → On this machine, native builds took about 60 seconds. The job gets the same 30-minute timeout as the consumer jobs.
 - [The skip list hides a regression in pubman or zig-cross on Windows] → Every skip is printed by name, and both suites still run on Linux and macOS in CI. Porting either suite removes its entry.
 - [The `pubman-consumer` native link failure is not caused by the long path] → Task 1.7 runs that test from the real checkout path. If it still fails, add `("fixtures/pubman-consumer", "native")` to the skip list with the linker error recorded, or fix the cause if it is small.
+
+## Reconciliation with main
+
+Main upgraded MoonBit to 0.10.18+6c83a7f62 and async to 0.22.7 before implementation. Keep those pins. Windows setup uses 0.10.18. Sync remains assessed only for 0.10.17+d971670cd; this change does not expand eligibility. Task 2.1 probes both versions, and the six-target sync build runs through test-doctor with ZIG_CROSS_SYNC_MOON_HOME, as main already arranges in CI. Historical observations above retain their original versions.
