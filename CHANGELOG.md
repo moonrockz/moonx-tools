@@ -6,6 +6,16 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.4.1] - 2026-11-07
+
+`zig-cross doctor` now assesses the MoonBit `0.10.20+65efd5b93` full runtime with moon `0.1.20261104`. This toolchain has the same `NAME_MAX` and `sys/vnode.h` defects as 0.10.18, so `doctor` reports the active `ZC_LINUX_NAME_MAX` and `ZC_DARWIN_VNODE_HEADER` header fixes instead of `ZC_TOOLCHAIN_UNVERIFIED`. `ZIG_CROSS_RUNTIME=sync` stays assessed for MoonBit 0.10.17 only. pubman now protects its lock, staging and temporary directory cleanup from task cancellation. The pinned toolchain is MoonBit `0.10.20+65efd5b93` with moonspec 0.12.0. This is a patch release because the commit since 0.4.0 is a `build` change, as for the 0.10.18 assessment in 0.3.2.
+
+### 🏗️ Build and CI
+
+- Upgrade MoonBit to 0.10.20 ([#21](https://github.com/moonrockz/moonx-tools/pull/21)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.4.0...v0.4.1
+
 ## [0.4.0] - 2026-11-07
 
 Native zig builds on Linux now compile `moonbitlang/async` 0.22.7. Its `fs.c` uses `O_PATH` after its own `#define _GNU_SOURCE`, and the `-include limits.h` flag of 0.3.2 came before that define, so glibc did not declare `O_PATH`. The `cc` wrapper now adds `-DNAME_MAX=255` (the Linux value) to MoonBit runtime and `moonbitlang/async` C sources instead, and `ZC_LINUX_NAME_MAX` describes the new flag. The new `windows-arm64` target cross-builds `aarch64-windows-gnu` PE binaries. The repository tasks and CI also run on Windows x64 and Windows arm64 hosts. The pinned toolchain is MoonBit `0.10.18+6c83a7f62` with `moonbitlang/async` 0.22.7. This is a minor release because it adds a feature, the `windows-arm64` target.
