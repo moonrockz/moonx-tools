@@ -6,6 +6,24 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.4.0] - 2026-11-07
+
+Native zig builds on Linux now compile `moonbitlang/async` 0.22.7. Its `fs.c` uses `O_PATH` after its own `#define _GNU_SOURCE`, and the `-include limits.h` flag of 0.3.2 came before that define, so glibc did not declare `O_PATH`. The `cc` wrapper now adds `-DNAME_MAX=255` (the Linux value) to MoonBit runtime and `moonbitlang/async` C sources instead, and `ZC_LINUX_NAME_MAX` describes the new flag. The new `windows-arm64` target cross-builds `aarch64-windows-gnu` PE binaries. The repository tasks and CI also run on Windows x64 and Windows arm64 hosts. The pinned toolchain is MoonBit `0.10.18+6c83a7f62` with `moonbitlang/async` 0.22.7. This is a minor release because it adds a feature, the `windows-arm64` target.
+
+### 🚀 Features
+
+- *(zig-cross)* Add Windows arm64 target and Windows host checks ([#18](https://github.com/moonrockz/moonx-tools/pull/18)) by @DamianReeves
+
+### 📚 Documentation
+
+- *(openspec)* Archive Windows arm64 target change ([#19](https://github.com/moonrockz/moonx-tools/pull/19)) by @DamianReeves
+
+### 🏗️ Build and CI
+
+- Upgrade MoonBit to 0.10.18 ([#17](https://github.com/moonrockz/moonx-tools/pull/17)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.3.2...v0.4.0
+
 ## [0.3.2] - 2026-10-31
 
 Cross-build the MoonBit 0.10.17+ full runtime with zig for Linux and macOS targets, including MoonBit `0.10.18+6c83a7f62`. The `cc` wrapper adds `-include limits.h` for Linux targets and a minimal `sys/vnode.h` shim for darwin targets, only to MoonBit runtime and `moonbitlang/async` C sources. A Linux host can now build darwin targets without a macOS SDK. `zig-cross doctor` assesses MoonBit 0.10.18 and reports the `ZC_LINUX_NAME_MAX` and `ZC_DARWIN_VNODE_HEADER` warnings. CI uses Playwright 1.64.1 so that the pubman consumer checks run on Ubuntu 26.04 runners.

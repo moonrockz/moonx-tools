@@ -86,5 +86,5 @@ test "parse_args flags and unknown commands" {
 
 ///|
 test "version text" {
-  inspect(version_text(), content="zig-cross 0.3.2")
+  inspect(version_text(), content="zig-cross 0.4.0")
 }
