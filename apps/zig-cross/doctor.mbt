@@ -59,6 +59,9 @@ let assessed_toolchains : Array[(String, String, String)] = [
   (
     "0.10.18+6c83a7f62", "0.1.20261028", "2f3e28288883bc669aacf961b6e0a04eede59f5ca09d7c838cf70e3651fc5e7f",
   ),
+  (
+    "0.10.20+65efd5b93", "0.1.20261104", "9460b04586700bdff229393bca37473f18db42fb0cfc4711394e7ea410899ab0",
+  ),
 ]
 
 ///|
