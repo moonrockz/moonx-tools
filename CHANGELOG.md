@@ -6,6 +6,16 @@ is 0.x, a minor release can contain breaking changes.
 
 <!-- git-cliff: end of header -->
 
+## [0.4.1] - 2026-11-07
+
+<!-- Highlights: replace this comment with a few sentences on what this release brings. -->
+
+### 🏗️ Build and CI
+
+- Upgrade MoonBit to 0.10.20 ([#21](https://github.com/moonrockz/moonx-tools/pull/21)) by @DamianReeves
+
+**Full changelog**: https://github.com/moonrockz/moonx-tools/compare/v0.4.0...v0.4.1
+
 ## [0.4.0] - 2026-11-07
 
 Native zig builds on Linux now compile `moonbitlang/async` 0.22.7. Its `fs.c` uses `O_PATH` after its own `#define _GNU_SOURCE`, and the `-include limits.h` flag of 0.3.2 came before that define, so glibc did not declare `O_PATH`. The `cc` wrapper now adds `-DNAME_MAX=255` (the Linux value) to MoonBit runtime and `moonbitlang/async` C sources instead, and `ZC_LINUX_NAME_MAX` describes the new flag. The new `windows-arm64` target cross-builds `aarch64-windows-gnu` PE binaries. The repository tasks and CI also run on Windows x64 and Windows arm64 hosts. The pinned toolchain is MoonBit `0.10.18+6c83a7f62` with `moonbitlang/async` 0.22.7. This is a minor release because it adds a feature, the `windows-arm64` target.
