@@ -156,6 +156,27 @@ test "MoonBit 0.10.18 has a full-runtime assessment but not a sync one" {
 }
 
 ///|
+test "MoonBit 0.10.20 has a full-runtime assessment but not a sync one" {
+  let env = {
+    ..stock_environment("full"),
+    compiler: Some("0.10.20+65efd5b93"),
+    moon: Some("0.1.20261104"),
+    runtime_fingerprint: Some(
+      "9460b04586700bdff229393bca37473f18db42fb0cfc4711394e7ea410899ab0",
+    ),
+  }
+  let result = report(env, [LinuxX64, DarwinArm64])
+  assert_eq(result.status, "warning")
+  assert_eq(result.findings.map(f => f.code), [
+    "ZC_LINUX_NAME_MAX", "ZC_DARWIN_VNODE_HEADER",
+  ])
+  assert_true(result.findings[0].applicability.contains("0.10.20+65efd5b93"))
+  assert_false(sync_eligible(env))
+  let sync = report({ ..env, runtime_mode: "sync", }, [LinuxX64])
+  assert_true(sync.findings.any(f => f.code == "ZC_SYNC_UNAVAILABLE"))
+}
+
+///|
 test "an unassessed full runtime gets the header fix and a notice" {
   let env = {
     ..stock_environment("full"),

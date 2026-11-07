@@ -18,7 +18,7 @@ On Windows arm64, MoonBit's x64 toolchain runs under Windows' x64 emulation and
 produces x64 native binaries. `mise install` completes core, `moonx` and the
 registry index through a post-install bootstrap. `MOON_HOME` selects that install.
 
-Pinned toolchain (MoonBit `0.10.18+6c83a7f62`, Zig `0.17.0`):
+Pinned toolchain (MoonBit `0.10.20+65efd5b93`, Zig `0.17.0`):
 
 ```sh
 mise trust

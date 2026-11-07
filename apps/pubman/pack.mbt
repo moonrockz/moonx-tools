@@ -194,25 +194,31 @@ async fn pack(c : Config, host : Host) -> Json {
   host.mkdir(parent(c.output), recursive=true, allow_exist=true)
   let lock = host.create(c.output + ".pack-lock", allow_existing=false)
   defer lock.close()
-  defer host.remove(c.output + ".pack-lock")
+  defer @async.protect_from_cancel(() => host.remove(c.output + ".pack-lock"))
   let prior_guard = if @fs.exists(c.output) {
     Some(host.create(c.output + "/.operation-lock", allow_existing=false))
   } else {
     None
   }
   let mut prior_lock_path = c.output + "/.operation-lock"
-  defer (if prior_guard is Some(file) {
-    file.close()
-    if @fs.exists(prior_lock_path) {
-      host.remove(prior_lock_path)
+  defer @async.protect_from_cancel(() => {
+    if prior_guard is Some(file) {
+      file.close()
+      if @fs.exists(prior_lock_path) {
+        host.remove(prior_lock_path)
+      }
     }
   })
   let work = host.tmpdir(prefix="pubman-build-")
-  defer host.rmdir(work, recursive=true)
+  defer @async.protect_from_cancel(() => host.rmdir(work, recursive=true))
   let stage = c.output + ".staging-" + basename(work)
   host.mkdir(stage, allow_exist=false)
   let mut committed = false
-  defer (if !committed { host.rmdir(stage, recursive=true) })
+  defer @async.protect_from_cancel(() => {
+    if !committed {
+      host.rmdir(stage, recursive=true)
+    }
+  })
   let payload = stage + "/payload"
   host.mkdir(payload, recursive=true)
   let tools = tool_identities(host)
@@ -407,9 +413,11 @@ async fn pack(c : Config, host : Host) -> Json {
     host.rename(c.output, backup, replace=false)
     prior_lock_path = backup + "/.operation-lock"
   }
-  errdefer (if prior && !committed {
-    host.rename(backup, c.output, replace=false)
-    prior_lock_path = c.output + "/.operation-lock"
+  errdefer @async.protect_from_cancel(() => {
+    if prior && !committed {
+      host.rename(backup, c.output, replace=false)
+      prior_lock_path = c.output + "/.operation-lock"
+    }
   })
   host.rename(stage, c.output, replace=false)
   committed = true

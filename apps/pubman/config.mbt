@@ -1,9 +1,10 @@
 ///|
+#derive(Eq)
 enum Token {
   Word(String)
   Quoted(String)
   Mark(String)
-} derive(Eq)
+}
 
 ///|
 /// Lex Moon manifest scalars and balanced containers. Strings use JSON escapes;

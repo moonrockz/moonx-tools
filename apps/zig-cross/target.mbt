@@ -1,6 +1,7 @@
 ///|
 /// A target that zig-cross builds for. `Host` is the machine itself: zig only compiles for it,
 /// and the wrappers do not strip anything.
+#derive(Eq, Debug)
 pub(all) enum Target {
   LinuxX64
   LinuxArm64
@@ -9,7 +10,7 @@ pub(all) enum Target {
   WindowsX64
   WindowsArm64
   Host
-} derive(Eq, Debug)
+}
 
 ///|
 /// The target names, in the order that the usage text shows them.

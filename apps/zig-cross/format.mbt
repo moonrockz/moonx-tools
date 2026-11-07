@@ -1,12 +1,13 @@
 ///|
 /// The executable format of a binary, from its header. The payload is the machine field:
 /// `e_machine` for ELF, `cputype` for Mach-O and `Machine` for PE.
+#derive(Eq, Debug)
 pub(all) enum Format {
   Elf(Int32)
   MachO(Int32)
   Pe(Int32)
   Unknown
-} derive(Eq, Debug)
+}
 
 ///|
 /// The text that the summary shows, for example `Elf(62)`.
