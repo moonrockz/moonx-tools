@@ -1,6 +1,6 @@
 name = "moonrockz/pubman"
 
-version = "0.3.2"
+version = "0.4.0"
 
 description = "Package and verify MoonBit libraries for Mooncakes and npm"
 

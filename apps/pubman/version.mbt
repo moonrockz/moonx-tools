@@ -1,2 +1,2 @@
 ///|
-pub let version : String = "0.3.2"
+pub let version : String = "0.4.0"
