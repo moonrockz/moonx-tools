@@ -1,5 +1,6 @@
 ///|
 /// Versions and paths refer to the tools selected by Moon, not whichever moonc is first on PATH.
+#derive(ToJson)
 priv struct Environment {
   host_os : String?
   host_arch : String?
@@ -12,16 +13,18 @@ priv struct Environment {
   runtime_mode : String
   darwin_sdk : String?
   toolchain_overrides : Array[String]
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct NextStep {
   kind : String
   command : String
   prerequisites : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct Finding {
   code : String
   severity : String
@@ -30,16 +33,17 @@ priv struct Finding {
   applicability : String
   evidence : Array[String]
   next_steps : Array[NextStep]
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct Report {
   schema_version : Int32
   environment : Environment
   targets : Array[String]
   status : String
   findings : Array[Finding]
-} derive(ToJson)
+}
 
 ///|
 let assessed_compiler = "0.10.17+d971670cd"

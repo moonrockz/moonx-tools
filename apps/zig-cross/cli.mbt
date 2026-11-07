@@ -1,11 +1,12 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Command {
   Build(target_dir~ : String, targets~ : Array[Target], paths~ : Array[String])
   Exec(target~ : Target, argv~ : Array[String])
   Doctor(targets~ : Array[Target], json~ : Bool)
   Help
   Version
-} derive(Eq, Debug)
+}
 
 ///|
 /// The default value of `--target-dir`.
