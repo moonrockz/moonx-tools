@@ -8,7 +8,7 @@ is 0.x, a minor release can contain breaking changes.
 
 ## [0.4.1] - 2026-11-07
 
-<!-- Highlights: replace this comment with a few sentences on what this release brings. -->
+`zig-cross doctor` now assesses the MoonBit `0.10.20+65efd5b93` full runtime with moon `0.1.20261104`. This toolchain has the same `NAME_MAX` and `sys/vnode.h` defects as 0.10.18, so `doctor` reports the active `ZC_LINUX_NAME_MAX` and `ZC_DARWIN_VNODE_HEADER` header fixes instead of `ZC_TOOLCHAIN_UNVERIFIED`. `ZIG_CROSS_RUNTIME=sync` stays assessed for MoonBit 0.10.17 only. pubman now protects its lock, staging and temporary directory cleanup from task cancellation. The pinned toolchain is MoonBit `0.10.20+65efd5b93` with moonspec 0.12.0. This is a patch release because the commit since 0.4.0 is a `build` change, as for the 0.10.18 assessment in 0.3.2.
 
 ### 🏗️ Build and CI
 
