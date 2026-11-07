@@ -106,13 +106,13 @@ async fn verify_bundle(root : String, b : Json, host : Host) -> Json {
   // Exclusivity also prevents verify racing with publish or another verify.
   let lock = host.create(root + "/.operation-lock", allow_existing=false)
   defer lock.close()
-  defer host.remove(root + "/.operation-lock")
+  defer @async.protect_from_cancel(() => host.remove(root + "/.operation-lock"))
   if @fs.exists(root + "/verification.json") {
     host.remove(root + "/verification.json")
   }
   let before = evidence(root, b, host)
   let work = host.tmpdir(prefix="pubman-consumer-")
-  defer host.rmdir(work, recursive=true)
+  defer @async.protect_from_cancel(() => host.rmdir(work, recursive=true))
   write_json(host, work + "/package.json", { "private": true, "type": "module" })
   host.write_file(work + "/global.npmrc", "")
   ignore(

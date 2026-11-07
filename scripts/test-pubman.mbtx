@@ -116,7 +116,11 @@ async fn main {
   let hidden = fixture + ".verification-hidden"
   @fs.rename(fixture, hidden, replace=false)
   let mut moved = true
-  defer (if moved { @fs.rename(hidden, fixture, replace=false) })
+  defer @async.protect_from_cancel(() => {
+    if moved {
+      @fs.rename(hidden, fixture, replace=false)
+    }
+  })
   ignore(
     cli(
       exe,

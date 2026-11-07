@@ -335,7 +335,7 @@ async fn publish_state(p : Publication, host : Host) -> Unit {
   }
   if !exists {
     let work = host.tmpdir(prefix="pubman-publish-")
-    defer host.rmdir(work, recursive=true)
+    defer @async.protect_from_cancel(() => host.rmdir(work, recursive=true))
     let source = work + "/source"
     extract_source(host, p.root + "/payload/source.zip", source)
     if inventory(source) != read_json(p.root + "/payload/source-inventory.json") {
@@ -439,7 +439,7 @@ async fn publish_state(p : Publication, host : Host) -> Unit {
 async fn publish_bundle(root : String, b : Json, host : Host) -> Json {
   let lock = host.create(root + "/.operation-lock", allow_existing=false)
   defer lock.close()
-  defer host.remove(root + "/.operation-lock")
+  defer @async.protect_from_cancel(() => host.remove(root + "/.operation-lock"))
   let (_, fresh) = bundle_read(root)
   if fresh != b || !verification_valid(root, b, host) {
     failed(
